@@ -1,10 +1,10 @@
 package handler
 
 import (
+	"html/template"
 	"log"
 	"net/http"
 	"path/filepath"
-	"text/template"
 )
 
 func TemplateRender(w http.ResponseWriter, r *http.Request, baseTemplate string, contentTemplate string, data interface{}) {

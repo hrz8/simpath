@@ -6,6 +6,7 @@ import (
 )
 
 var (
+	ErrUserNotFound        = errors.New("User not found")
 	ErrInvalidUserPassword = errors.New("Invalid user password")
 )
 
@@ -19,17 +20,30 @@ func NewService(db *sql.DB) *Service {
 	}
 }
 
-const getUserByEmail = "SELECT email, encrypted_password FROM users WHERE email = $1"
+const findUserByEmail = "SELECT id, email, encrypted_password FROM users WHERE email = $1"
 
-func (s *Service) AuthUser(email, password string) (*OauthUser, error) {
-	var user OauthUser
+func (s *Service) FindUserByEmail(email string) (*OauthUser, error) {
+	var u OauthUser
 	err := s.db.QueryRow(
-		getUserByEmail,
+		findUserByEmail,
 		email,
 	).Scan(
-		&user.Email,
-		&user.EncryptedPassword,
+		&u.ID,
+		&u.Email,
+		&u.EncryptedPassword,
 	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrUserNotFound
+		}
+		return nil, err
+	}
+
+	return &u, nil
+}
+
+func (s *Service) AuthUser(email, password string) (*OauthUser, error) {
+	user, err := s.FindUserByEmail(email)
 	if err != nil {
 		return nil, err
 	}
@@ -38,5 +52,5 @@ func (s *Service) AuthUser(email, password string) (*OauthUser, error) {
 		return nil, ErrInvalidUserPassword
 	}
 
-	return &user, nil
+	return user, nil
 }

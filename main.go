@@ -11,6 +11,9 @@ import (
 
 	"github.com/hrz8/simpath/database"
 	"github.com/hrz8/simpath/handler"
+	"github.com/hrz8/simpath/internal/client"
+	"github.com/hrz8/simpath/internal/scope"
+	"github.com/hrz8/simpath/internal/token"
 	"github.com/hrz8/simpath/internal/user"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -30,10 +33,10 @@ func main() {
 	mux := http.NewServeMux()
 
 	userSvc := user.NewService(db)
-	hdl := handler.Handler{
-		DB:      db,
-		UserSvc: userSvc,
-	}
+	clientSvc := client.NewService(db)
+	scopeSvc := scope.NewService(db)
+	tokenSvc := token.NewService(db)
+	hdl := handler.NewHandler(db, userSvc, clientSvc, scopeSvc, tokenSvc)
 
 	mux.HandleFunc("GET /v1/login", hdl.LoginFormHandler)
 	mux.HandleFunc("POST /v1/login", hdl.LoginHandler)
