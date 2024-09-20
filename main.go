@@ -15,6 +15,7 @@ import (
 	"github.com/hrz8/simpath/internal/scope"
 	"github.com/hrz8/simpath/internal/token"
 	"github.com/hrz8/simpath/internal/user"
+	"github.com/hrz8/simpath/session"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -32,24 +33,32 @@ func main() {
 
 	mux := http.NewServeMux()
 
+	sessionSvc := session.NewService()
 	userSvc := user.NewService(db)
 	clientSvc := client.NewService(db)
 	scopeSvc := scope.NewService(db)
 	tokenSvc := token.NewService(db)
-	hdl := handler.NewHandler(db, userSvc, clientSvc, scopeSvc, tokenSvc)
+	hdl := handler.NewHandler(
+		db,
+		sessionSvc,
+		userSvc,
+		clientSvc,
+		scopeSvc,
+		tokenSvc,
+	)
 
 	mux.HandleFunc("GET /v1/login", hdl.LoginFormHandler)
 	mux.HandleFunc("POST /v1/login", hdl.LoginHandler)
 	mux.HandleFunc("GET /v1/register", hdl.RegisterFormHandler)
+	mux.HandleFunc("GET /v1/authorize", hdl.AuthorizeFormHandler)
+
+	execCtx, execCancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer execCancel()
 
 	s := &http.Server{
 		Addr:    ":5001",
 		Handler: mux,
 	}
-
-	execCtx, execCancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
-	defer execCancel()
-
 	sErr := make(chan error)
 	go func() {
 		fmt.Println("server started")

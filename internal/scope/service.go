@@ -3,6 +3,7 @@ package scope
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -20,15 +21,28 @@ func NewService(db *sql.DB) *Service {
 	}
 }
 
-const findScope = "SELECT COUNT(scope) FROM scopes WHERE scope IN (?)"
+func toAny(slice []string) []any {
+	interfaceSlice := make([]any, len(slice))
+	for i, v := range slice {
+		interfaceSlice[i] = v
+	}
+	return interfaceSlice
+}
 
 func (s *Service) FindScope(requestedScope string) (string, error) {
 	if requestedScope == "" {
 		return s.GetDefaultScope(), nil
 	}
+
 	scopes := strings.Split(requestedScope, " ")
+	placeholders := make([]string, len(scopes))
+	for i := range scopes {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+	}
+
 	var count int
-	s.db.QueryRow(findScope, scopes).Scan(&count)
+	sql := fmt.Sprintf("SELECT COUNT(scope) FROM scopes WHERE scope IN (%s)", strings.Join(placeholders, ","))
+	s.db.QueryRow(sql, toAny(scopes)...).Scan(&count)
 
 	if count == len(scopes) {
 		return requestedScope, nil

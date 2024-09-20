@@ -5,7 +5,16 @@ import (
 	"net/http"
 )
 
+const (
+	defaultLoginRedirectUri = "/v1/authorize"
+)
+
 func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
+	// start cookie session | handle guest
+	h.sessionSvc.SetSessionService(w, r)
+	h.sessionSvc.StartSession()
+
+	// parse form input to perform r.Form.Method()
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -24,23 +33,37 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.userSvc.AuthUser(email, password)
 	if err != nil {
-		// set session error
+		h.sessionSvc.SetFlashMessage(err.Error())
 		http.Redirect(w, r, r.RequestURI, http.StatusFound)
 		return
 	}
 
 	scope, err := h.scopeSvc.FindScope(reqScope)
 	if err != nil {
+		h.sessionSvc.SetFlashMessage(err.Error())
 		http.Redirect(w, r, r.RequestURI, http.StatusFound)
 		return
 	}
 
-	at, err := h.tokenSvc.GrantAccessToken(cli, user, scope, 3600)
+	_, err = h.tokenSvc.GrantAccessToken(cli, user, scope, 3600)
 	if err != nil {
-		fmt.Println(at)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.sessionSvc.SetFlashMessage(err.Error())
+		http.Redirect(w, r, r.RequestURI, http.StatusFound)
 		return
 	}
 
-	fmt.Fprint(w, fmt.Sprintf("logged in: %s", user.Email))
+	refreshTokenExp := 1209600 // 14 days
+	_, err = h.tokenSvc.GrantRefreshToken(cli, user, scope, refreshTokenExp)
+	if err != nil {
+		h.sessionSvc.SetFlashMessage(err.Error())
+		http.Redirect(w, r, r.RequestURI, http.StatusFound)
+		return
+	}
+
+	loginRedirectURI := r.URL.Query().Get("login_redirect_uri")
+	if loginRedirectURI == "" {
+		loginRedirectURI = defaultLoginRedirectUri
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("%s%s", loginRedirectURI, getQueryString(r.URL.Query())), http.StatusFound)
 }

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-func TemplateRender(w http.ResponseWriter, r *http.Request, baseTemplate string, contentTemplate string, data interface{}) {
+func TemplateRender(w http.ResponseWriter, r *http.Request, baseTemplate string, contentTemplate string, data any) {
 	baseTemplatePath := filepath.Join("templates", baseTemplate)
 	contentTemplatePath := filepath.Join("templates", "partials", contentTemplate)
 
