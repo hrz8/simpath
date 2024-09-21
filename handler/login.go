@@ -3,11 +3,25 @@ package handler
 import (
 	"fmt"
 	"net/http"
+
+	"github.com/hrz8/simpath/internal/token"
+	"github.com/hrz8/simpath/session"
 )
 
-const (
-	defaultLoginRedirectUri = "/v1/authorize"
-)
+func (h *Handler) login(clientID uint32, userID uint32, scope string) (*token.OauthAccessToken, *token.OauthRefreshToken, error) {
+	at, err := h.tokenSvc.GrantAccessToken(clientID, userID, scope, 3600)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	refreshTokenExp := 1209600 // 14 days
+	rt, err := h.tokenSvc.GetOrCreateRefreshToken(clientID, userID, scope, refreshTokenExp)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return at, rt, err
+}
 
 func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// start cookie session | handle guest
@@ -45,25 +59,24 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.tokenSvc.GrantAccessToken(cli, user, scope, 3600)
+	at, rt, err := h.login(cli.ID, user.ID, scope)
 	if err != nil {
 		h.sessionSvc.SetFlashMessage(err.Error())
 		http.Redirect(w, r, r.RequestURI, http.StatusFound)
 		return
 	}
 
-	refreshTokenExp := 1209600 // 14 days
-	_, err = h.tokenSvc.GrantRefreshToken(cli, user, scope, refreshTokenExp)
-	if err != nil {
+	userSession := &session.UserSession{
+		ClientID:     cli.ClientID,
+		Email:        user.Email,
+		AccessToken:  at.AccessToken,
+		RefreshToken: rt.RefreshToken,
+	}
+	if err := h.sessionSvc.SetUserSession(userSession); err != nil {
 		h.sessionSvc.SetFlashMessage(err.Error())
 		http.Redirect(w, r, r.RequestURI, http.StatusFound)
 		return
 	}
 
-	loginRedirectURI := r.URL.Query().Get("login_redirect_uri")
-	if loginRedirectURI == "" {
-		loginRedirectURI = defaultLoginRedirectUri
-	}
-
-	http.Redirect(w, r, fmt.Sprintf("%s%s", loginRedirectURI, getQueryString(r.URL.Query())), http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf("/v1/authorize%s", getQueryString(r.URL.Query())), http.StatusFound)
 }

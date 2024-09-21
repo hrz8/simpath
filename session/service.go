@@ -1,6 +1,7 @@
 package session
 
 import (
+	"encoding/gob"
 	"errors"
 	"net/http"
 
@@ -17,7 +18,7 @@ type Service struct {
 
 type UserSession struct {
 	ClientID     string
-	Username     string
+	Email        string
 	AccessToken  string
 	RefreshToken string
 }
@@ -27,6 +28,10 @@ var (
 	UserSessionKey       = "simpath_user"
 	ErrSessionNotStarted = errors.New("Session not started")
 )
+
+func init() {
+	gob.Register(new(UserSession))
+}
 
 func NewService() *Service {
 	cookieStore := sessions.NewCookieStore([]byte("some_secret"))

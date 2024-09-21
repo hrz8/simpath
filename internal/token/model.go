@@ -6,8 +6,8 @@ import (
 
 type OauthAccessToken struct {
 	ID          uint32
-	ClientID    string
-	UserID      string
+	ClientID    uint32
+	UserID      uint32
 	AccessToken string
 	Scope       string
 	ExpiresAt   time.Time
@@ -17,8 +17,8 @@ type OauthAccessToken struct {
 
 type OauthRefreshToken struct {
 	ID           uint32
-	ClientID     string
-	UserID       string
+	ClientID     uint32
+	UserID       uint32
 	RefreshToken string
 	Scope        string
 	ExpiresAt    time.Time
