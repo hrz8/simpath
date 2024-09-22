@@ -13,6 +13,7 @@ type OauthAccessToken struct {
 	ExpiresAt   time.Time
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	DeletedAt   *time.Time
 }
 
 type OauthRefreshToken struct {
@@ -24,4 +25,5 @@ type OauthRefreshToken struct {
 	ExpiresAt    time.Time
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
+	DeletedAt    *time.Time
 }

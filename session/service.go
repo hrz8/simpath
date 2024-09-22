@@ -17,7 +17,8 @@ type Service struct {
 }
 
 type UserSession struct {
-	ClientID     string
+	ClientID     uint32
+	ClientUUID   string
 	Email        string
 	AccessToken  string
 	RefreshToken string

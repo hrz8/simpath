@@ -49,6 +49,7 @@ func main() {
 
 	mux.HandleFunc("GET /v1/login", hdl.LoginFormHandler)
 	mux.HandleFunc("POST /v1/login", hdl.LoginHandler)
+	mux.HandleFunc("GET /v1/logout", hdl.LogoutPage)
 	mux.HandleFunc("GET /v1/register", hdl.RegisterFormHandler)
 	mux.HandleFunc("GET /v1/authorize", hdl.AuthorizeFormHandler)
 

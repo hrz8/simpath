@@ -19,15 +19,15 @@ func NewService(db *sql.DB) *Service {
 	}
 }
 
-const findClientByClientID = "SELECT id, redirect_uri, app_name FROM clients WHERE client_id = $1"
+const findClientByClientUUID = "SELECT id, redirect_uri, app_name FROM clients WHERE client_id = $1"
 
-func (s *Service) FindClientByClientID(clientID string) (*OauthClient, error) {
+func (s *Service) FindClientByClientUUID(clientID string) (*OauthClient, error) {
 	if clientID == "" {
 		clientID = "00000000-0000-0000-0000-000000000000"
 	}
 	var cli OauthClient
 	err := s.db.QueryRow(
-		findClientByClientID,
+		findClientByClientUUID,
 		clientID,
 	).Scan(
 		&cli.ID,

@@ -8,19 +8,37 @@ import (
 	"github.com/hrz8/simpath/session"
 )
 
-func (h *Handler) login(clientID uint32, userID uint32, scope string) (*token.OauthAccessToken, *token.OauthRefreshToken, error) {
-	at, err := h.tokenSvc.GrantAccessToken(clientID, userID, scope, 3600)
-	if err != nil {
-		return nil, nil, err
+func (h *Handler) LoginFormHandler(w http.ResponseWriter, r *http.Request) {
+	// start cookie session | handle guest
+	h.sessionSvc.SetSessionService(w, r)
+	h.sessionSvc.StartSession()
+	flashMsg, _ := h.sessionSvc.GetFlashMessage()
+
+	// prevent logged-in user to access the login page again
+	_, err := h.sessionSvc.GetUserSession()
+	if err == nil {
+		http.Redirect(w, r, fmt.Sprintf("/v1/authorize%s", getQueryString(r.URL.Query())), http.StatusFound)
+		return
 	}
 
-	refreshTokenExp := 1209600 // 14 days
-	rt, err := h.tokenSvc.GetOrCreateRefreshToken(clientID, userID, scope, refreshTokenExp)
-	if err != nil {
-		return nil, nil, err
+	// parse form input to perform r.Form.Method()
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
-	return at, rt, err
+	clientID := r.Form.Get("client_id")
+	_, err = h.clientSvc.FindClientByClientUUID(clientID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	data := map[string]any{
+		"error":       flashMsg,
+		"queryString": r.URL.RawQuery,
+	}
+	templateRender(w, r, "landing.html", "login.html", data)
 }
 
 func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -35,7 +53,7 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	clientID := r.Form.Get("client_id")
-	cli, err := h.clientSvc.FindClientByClientID(clientID)
+	cli, err := h.clientSvc.FindClientByClientUUID(clientID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -67,7 +85,8 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userSession := &session.UserSession{
-		ClientID:     cli.ClientID,
+		ClientID:     cli.ID,
+		ClientUUID:   cli.ClientID,
 		Email:        user.Email,
 		AccessToken:  at.AccessToken,
 		RefreshToken: rt.RefreshToken,
@@ -79,4 +98,19 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, fmt.Sprintf("/v1/authorize%s", getQueryString(r.URL.Query())), http.StatusFound)
+}
+
+func (h *Handler) login(clientID uint32, userID uint32, scope string) (*token.OauthAccessToken, *token.OauthRefreshToken, error) {
+	at, err := h.tokenSvc.GrantAccessToken(clientID, userID, scope, 3600)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	refreshTokenExp := 1209600 // 14 days
+	rt, err := h.tokenSvc.GetOrCreateRefreshToken(clientID, userID, scope, refreshTokenExp)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return at, rt, err
 }

@@ -25,12 +25,14 @@ func NewService(db *sql.DB) *Service {
 	}
 }
 
-const deleteAccessToken = `
-	DELETE FROM access_tokens
+const softDeleteExpiredAccessToken = `
+	UPDATE access_tokens
+	SET deleted_at = $1
 	WHERE
-		client_id = $1 AND
-		user_id = $2 AND
-		expires_at <= $3
+		client_id = $2 AND
+		user_id = $3 AND
+		expires_at <= $4 AND
+		deleted_at IS NULL
 `
 const createNewAccessToken = `
 	INSERT INTO access_tokens (
@@ -49,13 +51,13 @@ const createNewAccessToken = `
 func (s *Service) GrantAccessToken(clientID uint32, userID uint32, scope string, expiresIn int) (*OauthAccessToken, error) {
 	tx, _ := s.db.Begin()
 
-	_, err := tx.Query(deleteAccessToken, clientID, userID, time.Now())
+	_, err := tx.Exec(softDeleteExpiredAccessToken, time.Now(), clientID, userID, time.Now())
 	if err != nil {
 		tx.Rollback()
 		return nil, err
 	}
 
-	var accessToken OauthAccessToken
+	var tkn OauthAccessToken
 	tokenVal := generateAccessToken()
 	err = tx.QueryRow(
 		createNewAccessToken,
@@ -67,14 +69,15 @@ func (s *Service) GrantAccessToken(clientID uint32, userID uint32, scope string,
 		time.Now(),
 		time.Now(),
 	).Scan(
-		&accessToken.ID,
-		&accessToken.ClientID,
-		&accessToken.UserID,
-		&accessToken.AccessToken,
-		&accessToken.Scope,
-		&accessToken.ExpiresAt,
-		&accessToken.CreatedAt,
-		&accessToken.UpdatedAt,
+		&tkn.ID,
+		&tkn.ClientID,
+		&tkn.UserID,
+		&tkn.AccessToken,
+		&tkn.Scope,
+		&tkn.ExpiresAt,
+		&tkn.CreatedAt,
+		&tkn.UpdatedAt,
+		&tkn.DeletedAt,
 	)
 	if err != nil {
 		tx.Rollback()
@@ -86,15 +89,17 @@ func (s *Service) GrantAccessToken(clientID uint32, userID uint32, scope string,
 		return nil, err
 	}
 
-	return &accessToken, nil
+	return &tkn, nil
 }
 
-const deleteRefreshToken = `
-	DELETE FROM refresh_tokens
+const softDeleteExpiredRefreshToken = `
+	UPDATE refresh_tokens
+	SET deleted_at = $1
 	WHERE
-		client_id = $1 AND
-		user_id = $2 AND
-		expires_at <= $3
+		client_id = $2 AND
+		user_id = $3 AND
+		expires_at <= $4 AND
+		deleted_at IS NULL
 `
 const createNewRefreshToken = `
 	INSERT INTO refresh_tokens (
@@ -105,14 +110,15 @@ const createNewRefreshToken = `
 		expires_at,
 		created_at,
 		updated_at
-	) VALUES ($1, $2, $3, $4, $5, $6, $7)
-	RETURNING *
+	) VALUES (
+		$1, $2, $3, $4, $5, $6, $7
+	) RETURNING *
 `
 
 func (s *Service) GetOrCreateRefreshToken(clientID uint32, userID uint32, scope string, expiresIn int) (*OauthRefreshToken, error) {
 	tx, _ := s.db.Begin()
 
-	_, err := tx.Query(deleteRefreshToken, clientID, clientID, time.Now())
+	_, err := tx.Exec(softDeleteExpiredRefreshToken, time.Now(), clientID, clientID, time.Now())
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -138,6 +144,7 @@ func (s *Service) GetOrCreateRefreshToken(clientID uint32, userID uint32, scope 
 		&tkn.ExpiresAt,
 		&tkn.CreatedAt,
 		&tkn.UpdatedAt,
+		&tkn.DeletedAt,
 	)
 	if err != nil {
 		tx.Rollback()
@@ -156,7 +163,8 @@ const getValidRefreshToken = `
 	SELECT * FROM refresh_tokens
 	WHERE
 		client_id = $1 AND
-		refresh_token = $2
+		refresh_token = $2 AND
+		deleted_at IS NULL
 `
 
 func (s *Service) GetValidRefreshToken(token string, clientID uint32) (*OauthRefreshToken, error) {
@@ -175,6 +183,7 @@ func (s *Service) GetValidRefreshToken(token string, clientID uint32) (*OauthRef
 		&tkn.ExpiresAt,
 		&tkn.CreatedAt,
 		&tkn.UpdatedAt,
+		&tkn.DeletedAt,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -196,14 +205,17 @@ const getAccessToken = `
 		user_id,
 		expires_at
 	FROM access_tokens
-	WHERE access_token = $1
+	WHERE
+		access_token = $1 AND
+		deleted_at IS NULL
 `
 const updateRefreshToken = `
 	UPDATE refresh_tokens
 	SET expires_at = $1
 	WHERE
 		client_id = $2 AND
-		user_id = $3
+		user_id = $3 AND
+		deleted_at IS NULL
 `
 
 func (s *Service) Authenticate(token string) (*OauthAccessToken, error) {
@@ -236,6 +248,65 @@ func (s *Service) Authenticate(token string) (*OauthAccessToken, error) {
 	}
 
 	return &tkn, nil
+}
+
+const getRefreshTokenByToken = `
+	SELECT id, refresh_token, client_id, user_id FROM refresh_tokens
+	WHERE
+		refresh_token = $1 AND
+		deleted_at IS NULL
+`
+const softDeleteRefreshToken = `
+	UPDATE refresh_tokens
+	SET deleted_at = $1
+	WHERE
+		client_id = $2 AND
+		user_id = $3 AND
+		deleted_at IS NULL
+`
+const getAccessTokenByToken = `
+	SELECT id, access_token, client_id, user_id FROM access_tokens
+	WHERE
+		access_token = $1 AND
+		deleted_at IS NULL
+`
+const softDeleteAccessToken = `
+	UPDATE access_tokens
+	SET deleted_at = $1
+	WHERE
+		client_id = $2 AND
+		user_id = $3 AND
+		deleted_at IS NULL
+`
+
+func (s *Service) ClearUserTokens(refreshToken string, accessToken string) {
+	refreshTkn := new(OauthRefreshToken)
+	err := s.db.QueryRow(
+		getRefreshTokenByToken,
+		refreshToken,
+	).Scan(
+		&refreshTkn.ID,
+		&refreshTkn.RefreshToken,
+		&refreshTkn.ClientID,
+		&refreshTkn.UserID,
+	)
+	if err == nil {
+		s.db.Exec(softDeleteRefreshToken, time.Now(), refreshTkn.ClientID, refreshTkn.UserID)
+	}
+
+	accessTkn := new(OauthAccessToken)
+	err = s.db.QueryRow(
+		getAccessTokenByToken,
+		accessToken,
+	).Scan(
+		&accessTkn.ID,
+		&accessTkn.AccessToken,
+		&accessTkn.ClientID,
+		&accessTkn.UserID,
+	)
+	if err == nil {
+		s.db.Exec(softDeleteAccessToken, time.Now(), accessTkn.ClientID, accessTkn.UserID)
+	}
 }
 
 func generateAccessToken() string {
