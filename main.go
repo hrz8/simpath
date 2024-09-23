@@ -47,27 +47,31 @@ func main() {
 		tokenSvc,
 	)
 
-	mux.HandleFunc("GET /v1/login", hdl.LoginFormHandler)
-	mux.HandleFunc("POST /v1/login", hdl.LoginHandler)
-	mux.HandleFunc("GET /v1/logout", hdl.LogoutPage)
+	// frontend
+	mux.Handle("GET /v1/login", hdl.ShouldHaveClientID(hdl.GuestOnly(http.HandlerFunc(hdl.LoginFormHandler))))
 	mux.HandleFunc("GET /v1/register", hdl.RegisterFormHandler)
-	mux.HandleFunc("GET /v1/authorize", hdl.AuthorizeFormHandler)
+	mux.Handle("GET /v1/authorize", hdl.ShouldHaveClientID(hdl.LoggedInOnly(http.HandlerFunc(hdl.AuthorizeFormHandler))))
+	mux.Handle("GET /v1/logout", hdl.ShouldHaveClientID(hdl.LoggedInOnly(http.HandlerFunc(hdl.LogoutPage))))
+
+	// backend
+	mux.HandleFunc("POST /v1/login", hdl.LoginHandler)
+	mux.HandleFunc("POST /v1/authorize", hdl.AuthorizeHandler)
 
 	execCtx, execCancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer execCancel()
 
-	s := &http.Server{
+	srv := &http.Server{
 		Addr:    ":5001",
 		Handler: mux,
 	}
-	sErr := make(chan error)
+	srvErr := make(chan error)
 	go func() {
 		fmt.Println("server started")
-		sErr <- s.ListenAndServe()
+		srvErr <- srv.ListenAndServe()
 	}()
 
 	select {
-	case e := <-sErr:
+	case e := <-srvErr:
 		if e != http.ErrServerClosed {
 			log.Fatalf("http server listen error: %+v", err)
 		}
@@ -75,7 +79,9 @@ func main() {
 		fmt.Println("shutdown...")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	s.Shutdown(ctx)
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		fmt.Printf("err shutdown http server: %+v", err)
+	}
 }

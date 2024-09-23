@@ -9,30 +9,7 @@ import (
 )
 
 func (h *Handler) LoginFormHandler(w http.ResponseWriter, r *http.Request) {
-	// start cookie session | handle guest
-	h.sessionSvc.SetSessionService(w, r)
-	h.sessionSvc.StartSession()
 	flashMsg, _ := h.sessionSvc.GetFlashMessage()
-
-	// prevent logged-in user to access the login page again
-	_, err := h.sessionSvc.GetUserSession()
-	if err == nil {
-		http.Redirect(w, r, fmt.Sprintf("/v1/authorize%s", getQueryString(r.URL.Query())), http.StatusFound)
-		return
-	}
-
-	// parse form input to perform r.Form.Method()
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	clientID := r.Form.Get("client_id")
-	_, err = h.clientSvc.FindClientByClientUUID(clientID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
 
 	data := map[string]any{
 		"error":       flashMsg,
