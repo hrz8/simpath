@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/hrz8/simpath/internal/token"
@@ -19,62 +18,51 @@ func (h *Handler) LoginFormHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	// start cookie session | handle guest
-	h.sessionSvc.SetSessionService(w, r)
-	h.sessionSvc.StartSession()
-
-	// parse form input to perform r.Form.Method()
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	clientID := r.Form.Get("client_id")
-	cli, err := h.clientSvc.FindClientByClientUUID(clientID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
 	email := r.Form.Get("email")
 	password := r.Form.Get("password")
 	reqScope := r.Form.Get("scope")
 
+	// check if client injected to context
+	cli, err := getClient(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	user, err := h.userSvc.AuthUser(email, password)
 	if err != nil {
 		h.sessionSvc.SetFlashMessage(err.Error())
-		http.Redirect(w, r, r.RequestURI, http.StatusFound)
+		redirectSelf(w, r)
 		return
 	}
 
 	scope, err := h.scopeSvc.FindScope(reqScope)
 	if err != nil {
 		h.sessionSvc.SetFlashMessage(err.Error())
-		http.Redirect(w, r, r.RequestURI, http.StatusFound)
+		redirectSelf(w, r)
 		return
 	}
 
 	at, rt, err := h.login(cli.ID, user.ID, scope)
 	if err != nil {
 		h.sessionSvc.SetFlashMessage(err.Error())
-		http.Redirect(w, r, r.RequestURI, http.StatusFound)
+		redirectSelf(w, r)
 		return
 	}
 
-	userSession := &session.UserSession{
+	if err := h.sessionSvc.SetUserSession(&session.UserSession{
 		ClientID:     cli.ID,
 		ClientUUID:   cli.ClientID,
 		Email:        user.Email,
 		AccessToken:  at.AccessToken,
 		RefreshToken: rt.RefreshToken,
-	}
-	if err := h.sessionSvc.SetUserSession(userSession); err != nil {
+	}); err != nil {
 		h.sessionSvc.SetFlashMessage(err.Error())
-		http.Redirect(w, r, r.RequestURI, http.StatusFound)
+		redirectSelf(w, r)
 		return
 	}
 
-	http.Redirect(w, r, fmt.Sprintf("/v1/authorize%s", getQueryString(r.URL.Query())), http.StatusFound)
+	redirectAuthorize(w, r)
 }
 
 func (h *Handler) login(clientID uint32, userID uint32, scope string) (*token.OauthAccessToken, *token.OauthRefreshToken, error) {

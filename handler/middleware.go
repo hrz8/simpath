@@ -4,9 +4,19 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/hrz8/simpath/session"
 )
+
+func redirectToURL(w http.ResponseWriter, r *http.Request, uri *url.URL, query url.Values) {
+	to := fmt.Sprintf("%s%s", uri.String(), getQueryString(query))
+	http.Redirect(w, r, to, http.StatusFound)
+}
+
+func redirectSelf(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, r.RequestURI, http.StatusFound)
+}
 
 func redirectLogin(w http.ResponseWriter, r *http.Request) {
 	to := fmt.Sprintf("/v1/login%s", getQueryString(r.URL.Query()))
@@ -16,6 +26,17 @@ func redirectLogin(w http.ResponseWriter, r *http.Request) {
 func redirectAuthorize(w http.ResponseWriter, r *http.Request) {
 	to := fmt.Sprintf("/v1/authorize%s", getQueryString(r.URL.Query()))
 	http.Redirect(w, r, to, http.StatusFound)
+}
+
+func redirectError(w http.ResponseWriter, r *http.Request, redirectURI *url.URL, err, state string) {
+	query := redirectURI.Query()
+	query.Set("error", err)
+	if state != "" {
+		query.Set("state", state)
+	}
+
+	to := redirectURI.String()
+	http.Redirect(w, r, fmt.Sprintf("%s%s", to, getQueryString(query)), http.StatusFound)
 }
 
 func (h *Handler) authenticate(userSession *session.UserSession) error {
@@ -58,6 +79,8 @@ func (h *Handler) authenticate(userSession *session.UserSession) error {
 func (h *Handler) ShouldHaveClientID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+
+		// parse so we can perform r.Form.Get()
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/hrz8/simpath/database"
 	"github.com/hrz8/simpath/handler"
+	"github.com/hrz8/simpath/internal/authcode"
 	"github.com/hrz8/simpath/internal/client"
 	"github.com/hrz8/simpath/internal/scope"
 	"github.com/hrz8/simpath/internal/token"
@@ -19,7 +21,35 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+func newServer(db *sql.DB) *http.ServeMux {
+	mux := http.NewServeMux()
+
+	sessionSvc := session.NewService()
+	userSvc := user.NewService(db)
+	clientSvc := client.NewService(db)
+	scopeSvc := scope.NewService(db)
+	tokenSvc := token.NewService(db)
+	authCodeSvc := authcode.NewService(db)
+
+	hdl := handler.NewHandler(
+		db,
+		sessionSvc,
+		userSvc,
+		clientSvc,
+		scopeSvc,
+		tokenSvc,
+		authCodeSvc,
+	)
+
+	addRoutes(mux, hdl)
+
+	return mux
+}
+
 func main() {
+	execCtx, execCancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer execCancel()
+
 	db, err := database.ConnectDB("postgres://postgres:toor@localhost:5432/simpath?sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
@@ -31,39 +61,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	mux := http.NewServeMux()
-
-	sessionSvc := session.NewService()
-	userSvc := user.NewService(db)
-	clientSvc := client.NewService(db)
-	scopeSvc := scope.NewService(db)
-	tokenSvc := token.NewService(db)
-	hdl := handler.NewHandler(
-		db,
-		sessionSvc,
-		userSvc,
-		clientSvc,
-		scopeSvc,
-		tokenSvc,
-	)
-
-	// frontend
-	mux.Handle("GET /v1/login", hdl.ShouldHaveClientID(hdl.GuestOnly(http.HandlerFunc(hdl.LoginFormHandler))))
-	mux.HandleFunc("GET /v1/register", hdl.RegisterFormHandler)
-	mux.Handle("GET /v1/authorize", hdl.ShouldHaveClientID(hdl.LoggedInOnly(http.HandlerFunc(hdl.AuthorizeFormHandler))))
-	mux.Handle("GET /v1/logout", hdl.ShouldHaveClientID(hdl.LoggedInOnly(http.HandlerFunc(hdl.LogoutPage))))
-
-	// backend
-	mux.HandleFunc("POST /v1/login", hdl.LoginHandler)
-	mux.HandleFunc("POST /v1/authorize", hdl.AuthorizeHandler)
-
-	execCtx, execCancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
-	defer execCancel()
-
-	srv := &http.Server{
-		Addr:    ":5001",
-		Handler: mux,
-	}
+	srv := &http.Server{Addr: ":5001", Handler: newServer(db)}
 	srvErr := make(chan error)
 	go func() {
 		fmt.Println("server started")
