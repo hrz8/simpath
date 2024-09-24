@@ -7,23 +7,24 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hrz8/simpath/config"
+	"github.com/hrz8/simpath/internal/scope"
 )
 
 var (
-	ErrRefreshTokenNotFound = errors.New("Refresh token not found")
-	ErrRefreshTokenExpired  = errors.New("Refresh token expired")
-	ErrAccessTokenNotFound  = errors.New("Access token not found")
-	ErrAccessTokenExpired   = errors.New("Access token expired")
+	ErrRefreshTokenNotFound          = errors.New("Refresh token not found")
+	ErrRefreshTokenExpired           = errors.New("Refresh token expired")
+	ErrAccessTokenNotFound           = errors.New("Access token not found")
+	ErrAccessTokenExpired            = errors.New("Access token expired")
+	ErrRequestedScopeCannotBeGreater = errors.New("Requested scope cannot be greater")
 )
 
 type Service struct {
-	db *sql.DB
+	db       *sql.DB
+	scopeSvc *scope.Service
 }
 
-func NewService(db *sql.DB) *Service {
-	return &Service{
-		db: db,
-	}
+func NewService(db *sql.DB, sSvc *scope.Service) *Service {
+	return &Service{db, sSvc}
 }
 
 func (s *Service) Login(clientID uint32, userID uint32, scope string) (*OauthAccessToken, *OauthRefreshToken, error) {
@@ -212,6 +213,25 @@ func (s *Service) GetValidRefreshToken(token string, clientID uint32) (*OauthRef
 	}
 
 	return tkn, nil
+}
+
+func (s *Service) GetRefreshTokenScope(refreshTkn *OauthRefreshToken, reqScope string) (string, error) {
+	var err error
+	scope := refreshTkn.Scope
+
+	if reqScope != "" {
+		scope, err = s.scopeSvc.FindScope(reqScope)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	// Requested scope CANNOT include any scope not originally granted
+	if !spaceDelimitedStringNotGreater(scope, refreshTkn.Scope) {
+		return "", ErrRequestedScopeCannotBeGreater
+	}
+
+	return scope, nil
 }
 
 const getAccessToken = `

@@ -10,6 +10,14 @@ import (
 	"github.com/hrz8/simpath/internal/user"
 )
 
+type TokenExchangeBody struct {
+	GrantType    string `json:"grant_type"`
+	RefreshToken string `json:"refresh_token"`
+	Code         string `json:"code"`
+	RedirectURI  string `json:"redirect_uri"`
+	Scope        string `json:"scope"` // optional
+}
+
 type Service struct {
 	db          *sql.DB
 	userSvc     *user.Service
@@ -21,8 +29,8 @@ func NewService(db *sql.DB, uSvc *user.Service, tSvc *token.Service, acSvc *auth
 	return &Service{db, uSvc, tSvc, acSvc}
 }
 
-func (s *Service) AuthorizationCodeGrant(code, redirectURI string, client *client.OauthClient) (*AccessTokenResponse, error) {
-	authCode, err := s.authCodeSvc.GetValidAuthCode(client.ID, code, redirectURI)
+func (s *Service) AuthorizationCodeGrant(body *TokenExchangeBody, client *client.OauthClient) (*AccessTokenResponse, error) {
+	authCode, err := s.authCodeSvc.GetValidAuthCode(body.Code, client.ID, body.RedirectURI)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +51,6 @@ func (s *Service) AuthorizationCodeGrant(code, redirectURI string, client *clien
 	if err != nil {
 		return nil, err
 	}
-
 	return &AccessTokenResponse{
 		AccessToken:  accessToken.AccessToken,
 		ExpiresIn:    config.AccessTokenLifetime,
@@ -54,6 +61,39 @@ func (s *Service) AuthorizationCodeGrant(code, redirectURI string, client *clien
 	}, nil
 }
 
-func (s *Service) RefreshTokenGrant(code, redirectURI string, client *client.OauthClient) (*AccessTokenResponse, error) {
-	return nil, nil
+func (s *Service) RefreshTokenGrant(body *TokenExchangeBody, client *client.OauthClient) (*AccessTokenResponse, error) {
+	refreshTkn, err := s.tokenSvc.GetValidRefreshToken(body.RefreshToken, client.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// get the scope
+	scope, err := s.tokenSvc.GetRefreshTokenScope(refreshTkn, body.Scope)
+	if err != nil {
+		return nil, err
+	}
+
+	// log in the user
+	accessToken, refreshToken, err := s.tokenSvc.Login(
+		refreshTkn.ClientID,
+		refreshTkn.UserID,
+		scope,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	var u *user.OauthUser
+	u, err = s.userSvc.FindUserByID(accessToken.UserID)
+	if err != nil {
+		return nil, err
+	}
+	return &AccessTokenResponse{
+		AccessToken:  accessToken.AccessToken,
+		ExpiresIn:    config.AccessTokenLifetime,
+		TokenType:    "Bearer",
+		Scope:        accessToken.Scope,
+		UserID:       u.PublicID,
+		RefreshToken: refreshToken.RefreshToken,
+	}, nil
 }

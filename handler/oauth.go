@@ -25,12 +25,6 @@ var (
 	}
 )
 
-type TokenExchangeBody struct {
-	GrantType   string `json:"grant_type"`
-	Code        string `json:"code"`
-	RedirectURI string `json:"redirect_uri"`
-}
-
 func getErrStatusCode(err error) int {
 	code, ok := errStatusCodeMap[err]
 	if ok {
@@ -72,18 +66,18 @@ func (h *Handler) AuthClient(clientID, secret string) (*client.OauthClient, erro
 }
 
 func (h *Handler) TokenHandler(w http.ResponseWriter, r *http.Request) {
-	var body TokenExchangeBody
+	body := new(tokengrant.TokenExchangeBody)
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, "invalid body", http.StatusBadRequest)
 		return
 	}
 
 	// map of grant types against each functions
-	grantTypes := map[string]func(code, redirectURI string, client *client.OauthClient) (*tokengrant.AccessTokenResponse, error){
+	grantTypes := map[string]func(body *tokengrant.TokenExchangeBody, client *client.OauthClient) (*tokengrant.AccessTokenResponse, error){
 		"authorization_code": h.tokenGrantSvc.AuthorizationCodeGrant,
-		// "password":           s.passwordGrant,
-		// "client_credentials": s.clientCredentialsGrant,
-		"refresh_token": h.tokenGrantSvc.RefreshTokenGrant,
+		"refresh_token":      h.tokenGrantSvc.RefreshTokenGrant,
+		// "password":           h.tokenGrantSvc.PasswordGrant,
+		// "client_credentials": h.tokenGrantSvc.ClientCredentialsGrant,
 	}
 
 	// check the grant type
@@ -100,7 +94,7 @@ func (h *Handler) TokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// processing access token grant
-	resp, err := grantFn(body.Code, body.RedirectURI, cli)
+	resp, err := grantFn(body, cli)
 	if err != nil {
 		response.Error(w, err.Error(), getErrStatusCode(err))
 		return

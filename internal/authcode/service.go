@@ -84,7 +84,7 @@ const getValidAuthCode = `
 		code = $2
 `
 
-func (s *Service) GetValidAuthCode(clientID uint32, code string, redirectURI string) (*OauthAuthorizationCode, error) {
+func (s *Service) GetValidAuthCode(code string, clientID uint32, redirectURI string) (*OauthAuthorizationCode, error) {
 	authCode := new(OauthAuthorizationCode)
 	if err := s.db.QueryRow(getValidAuthCode, clientID, code).Scan(
 		&authCode.ID,

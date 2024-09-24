@@ -29,7 +29,7 @@ func newServer(db *sql.DB) *http.ServeMux {
 	userSvc := user.NewService(db)
 	clientSvc := client.NewService(db)
 	scopeSvc := scope.NewService(db)
-	tokenSvc := token.NewService(db)
+	tokenSvc := token.NewService(db, scopeSvc)
 	authCodeSvc := authcode.NewService(db)
 	tokenGrantSvc := tokengrant.NewService(db, userSvc, tokenSvc, authCodeSvc)
 
