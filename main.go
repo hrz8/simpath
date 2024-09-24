@@ -14,6 +14,7 @@ import (
 	"github.com/hrz8/simpath/handler"
 	"github.com/hrz8/simpath/internal/authcode"
 	"github.com/hrz8/simpath/internal/client"
+	"github.com/hrz8/simpath/internal/introspect"
 	"github.com/hrz8/simpath/internal/scope"
 	"github.com/hrz8/simpath/internal/token"
 	"github.com/hrz8/simpath/internal/tokengrant"
@@ -31,7 +32,8 @@ func newServer(db *sql.DB) *http.ServeMux {
 	scopeSvc := scope.NewService(db)
 	tokenSvc := token.NewService(db, scopeSvc)
 	authCodeSvc := authcode.NewService(db)
-	tokenGrantSvc := tokengrant.NewService(db, userSvc, tokenSvc, authCodeSvc)
+	tokenGrantSvc := tokengrant.NewService(db, scopeSvc, userSvc, tokenSvc, authCodeSvc)
+	introspectSvc := introspect.NewService(db, userSvc, tokenSvc)
 
 	hdl := handler.NewHandler(
 		db,
@@ -42,6 +44,7 @@ func newServer(db *sql.DB) *http.ServeMux {
 		tokenSvc,
 		authCodeSvc,
 		tokenGrantSvc,
+		introspectSvc,
 	)
 
 	addRoutes(mux, hdl)

@@ -238,6 +238,7 @@ const getAccessToken = `
 	SELECT
 		client_id,
 		user_id,
+		scope,
 		expires_at
 	FROM access_tokens
 	WHERE
@@ -262,6 +263,7 @@ func (s *Service) Authenticate(token string) (*OauthAccessToken, error) {
 	).Scan(
 		&tkn.ClientID,
 		&tkn.UserID,
+		&tkn.Scope,
 		&tkn.ExpiresAt,
 	)
 	if err != nil {

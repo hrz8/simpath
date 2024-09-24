@@ -7,6 +7,7 @@ import (
 
 	"github.com/hrz8/simpath/internal/authcode"
 	"github.com/hrz8/simpath/internal/client"
+	"github.com/hrz8/simpath/internal/introspect"
 	"github.com/hrz8/simpath/internal/tokengrant"
 	"github.com/hrz8/simpath/internal/user"
 	"github.com/hrz8/simpath/password"
@@ -22,6 +23,9 @@ var (
 		authcode.ErrAuthorizationCodeExpired: http.StatusUnprocessableEntity,
 		authcode.ErrInvalidRedirectURI:       http.StatusUnprocessableEntity,
 		user.ErrUserNotFound:                 http.StatusNotFound,
+		user.ErrInvalidUserOrPassword:        http.StatusUnprocessableEntity,
+		introspect.ErrTokenMissing:           http.StatusUnprocessableEntity,
+		introspect.ErrTokenHintInvalid:       http.StatusUnprocessableEntity,
 	}
 )
 
@@ -76,7 +80,7 @@ func (h *Handler) TokenHandler(w http.ResponseWriter, r *http.Request) {
 	grantTypes := map[string]func(body *tokengrant.TokenExchangeBody, client *client.OauthClient) (*tokengrant.AccessTokenResponse, error){
 		"authorization_code": h.tokenGrantSvc.AuthorizationCodeGrant,
 		"refresh_token":      h.tokenGrantSvc.RefreshTokenGrant,
-		// "password":           h.tokenGrantSvc.PasswordGrant,
+		"password":           h.tokenGrantSvc.PasswordGrant,
 		// "client_credentials": h.tokenGrantSvc.ClientCredentialsGrant,
 	}
 
@@ -100,7 +104,29 @@ func (h *Handler) TokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Write response to json
+	// write response to json
 	response.WriteJSON(w, resp, 200)
+}
 
+func (h *Handler) IntrospectHandler(w http.ResponseWriter, r *http.Request) {
+	body := new(introspect.TokenIntrospectBody)
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid body", http.StatusBadRequest)
+		return
+	}
+
+	cli, err := h.clientBasicAuth(r)
+	if err != nil {
+		response.UnauthorizedError(w, err.Error())
+		return
+	}
+
+	resp, err := h.introspectSvc.IntrospectToken(body, cli)
+	if err != nil {
+		response.Error(w, err.Error(), getErrStatusCode(err))
+		return
+	}
+
+	// write response to json
+	response.WriteJSON(w, resp, 200)
 }

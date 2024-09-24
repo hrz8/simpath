@@ -13,6 +13,7 @@ import (
 
 	"github.com/hrz8/simpath/internal/authcode"
 	"github.com/hrz8/simpath/internal/client"
+	"github.com/hrz8/simpath/internal/introspect"
 	"github.com/hrz8/simpath/internal/scope"
 	"github.com/hrz8/simpath/internal/token"
 	"github.com/hrz8/simpath/internal/tokengrant"
@@ -41,6 +42,7 @@ type Handler struct {
 	tokenSvc      *token.Service
 	authCodeSvc   *authcode.Service
 	tokenGrantSvc *tokengrant.Service
+	introspectSvc *introspect.Service
 }
 
 func NewHandler(
@@ -52,6 +54,7 @@ func NewHandler(
 	tSvc *token.Service,
 	acSvc *authcode.Service,
 	tgSvc *tokengrant.Service,
+	iSvc *introspect.Service,
 ) *Handler {
 	return &Handler{
 		db,
@@ -62,6 +65,7 @@ func NewHandler(
 		tSvc,
 		acSvc,
 		tgSvc,
+		iSvc,
 	}
 }
 

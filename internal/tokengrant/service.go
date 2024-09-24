@@ -6,12 +6,15 @@ import (
 	"github.com/hrz8/simpath/config"
 	"github.com/hrz8/simpath/internal/authcode"
 	"github.com/hrz8/simpath/internal/client"
+	"github.com/hrz8/simpath/internal/scope"
 	"github.com/hrz8/simpath/internal/token"
 	"github.com/hrz8/simpath/internal/user"
 )
 
 type TokenExchangeBody struct {
 	GrantType    string `json:"grant_type"`
+	Email        string `json:"email"`
+	Password     string `json:"password"`
 	RefreshToken string `json:"refresh_token"`
 	Code         string `json:"code"`
 	RedirectURI  string `json:"redirect_uri"`
@@ -20,13 +23,14 @@ type TokenExchangeBody struct {
 
 type Service struct {
 	db          *sql.DB
+	scopeSvc    *scope.Service
 	userSvc     *user.Service
 	tokenSvc    *token.Service
 	authCodeSvc *authcode.Service
 }
 
-func NewService(db *sql.DB, uSvc *user.Service, tSvc *token.Service, acSvc *authcode.Service) *Service {
-	return &Service{db, uSvc, tSvc, acSvc}
+func NewService(db *sql.DB, sSvc *scope.Service, uSvc *user.Service, tSvc *token.Service, acSvc *authcode.Service) *Service {
+	return &Service{db, sSvc, uSvc, tSvc, acSvc}
 }
 
 func (s *Service) AuthorizationCodeGrant(body *TokenExchangeBody, client *client.OauthClient) (*AccessTokenResponse, error) {
@@ -88,6 +92,37 @@ func (s *Service) RefreshTokenGrant(body *TokenExchangeBody, client *client.Oaut
 	if err != nil {
 		return nil, err
 	}
+	return &AccessTokenResponse{
+		AccessToken:  accessToken.AccessToken,
+		ExpiresIn:    config.AccessTokenLifetime,
+		TokenType:    "Bearer",
+		Scope:        accessToken.Scope,
+		UserID:       u.PublicID,
+		RefreshToken: refreshToken.RefreshToken,
+	}, nil
+}
+
+func (s *Service) PasswordGrant(body *TokenExchangeBody, client *client.OauthClient) (*AccessTokenResponse, error) {
+	scp, err := s.scopeSvc.FindScope(body.Scope)
+	if err != nil {
+		return nil, err
+	}
+
+	u, err := s.userSvc.AuthUser(body.Email, body.Password)
+	if err != nil {
+		return nil, err
+	}
+
+	// log in the user
+	accessToken, refreshToken, err := s.tokenSvc.Login(
+		client.ID,
+		u.ID,
+		scp,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	return &AccessTokenResponse{
 		AccessToken:  accessToken.AccessToken,
 		ExpiresIn:    config.AccessTokenLifetime,

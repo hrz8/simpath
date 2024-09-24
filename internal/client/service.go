@@ -19,7 +19,16 @@ func NewService(db *sql.DB) *Service {
 	}
 }
 
-const findClientByClientUUID = "SELECT id, client_id, client_secret, redirect_uri, app_name FROM clients WHERE client_id = $1"
+const findClientByClientUUID = `
+SELECT
+	id,
+	client_id,
+	client_secret,
+	redirect_uri,
+	app_name
+FROM clients
+WHERE client_id = $1
+`
 
 func (s *Service) FindClientByClientUUID(clientID string) (*OauthClient, error) {
 	if clientID == "" {
