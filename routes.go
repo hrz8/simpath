@@ -7,6 +7,7 @@ import (
 )
 
 func addRoutes(mux *http.ServeMux, hdl *handler.Handler) {
+	// web
 	mux.Handle("GET /v1/login", hdl.ShouldHaveClientID(hdl.GuestOnly(http.HandlerFunc(hdl.LoginFormHandler))))
 	mux.HandleFunc("GET /v1/register", hdl.RegisterFormHandler)
 	mux.Handle("GET /v1/authorize", hdl.ShouldHaveClientID(hdl.LoggedInOnly(http.HandlerFunc(hdl.AuthorizeFormHandler))))

@@ -1,6 +1,23 @@
 # simpath
 
-it's a simple auth identity provider
+It's a simple auth identity provider.
+
+## Run
+```bash
+go run main.go
+```
+
+## Web
+Open your favorite browser
+```
+http://localhost:5001/v1/login?client_id=600ef080-d02c-426d-bf79-64247ba0fc90&redirect_uri=https%3A%2F%2Fwww.example.com&scope=read_write&state=somestate
+```
+
+Login with
+```
+Email: test@root
+Password: test_password
+```
 
 ## How to exchange access token
 
