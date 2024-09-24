@@ -15,6 +15,7 @@ import (
 	"github.com/hrz8/simpath/internal/client"
 	"github.com/hrz8/simpath/internal/scope"
 	"github.com/hrz8/simpath/internal/token"
+	"github.com/hrz8/simpath/internal/tokengrant"
 	"github.com/hrz8/simpath/internal/user"
 	"github.com/hrz8/simpath/session"
 )
@@ -32,13 +33,14 @@ var (
 )
 
 type Handler struct {
-	DB          *sql.DB
-	sessionSvc  *session.Service
-	userSvc     *user.Service
-	clientSvc   *client.Service
-	scopeSvc    *scope.Service
-	tokenSvc    *token.Service
-	authCodeSvc *authcode.Service
+	DB            *sql.DB
+	sessionSvc    *session.Service
+	userSvc       *user.Service
+	clientSvc     *client.Service
+	scopeSvc      *scope.Service
+	tokenSvc      *token.Service
+	authCodeSvc   *authcode.Service
+	tokenGrantSvc *tokengrant.Service
 }
 
 func NewHandler(
@@ -49,6 +51,7 @@ func NewHandler(
 	sSvc *scope.Service,
 	tSvc *token.Service,
 	acSvc *authcode.Service,
+	tgSvc *tokengrant.Service,
 ) *Handler {
 	return &Handler{
 		db,
@@ -58,6 +61,7 @@ func NewHandler(
 		sSvc,
 		tSvc,
 		acSvc,
+		tgSvc,
 	}
 }
 

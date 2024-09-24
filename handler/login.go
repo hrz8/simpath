@@ -3,7 +3,6 @@ package handler
 import (
 	"net/http"
 
-	"github.com/hrz8/simpath/internal/token"
 	"github.com/hrz8/simpath/session"
 )
 
@@ -43,7 +42,7 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	at, rt, err := h.login(cli.ID, user.ID, scope)
+	at, rt, err := h.tokenSvc.Login(cli.ID, user.ID, scope)
 	if err != nil {
 		h.sessionSvc.SetFlashMessage(err.Error())
 		redirectSelf(w, r)
@@ -63,19 +62,4 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	redirectAuthorize(w, r)
-}
-
-func (h *Handler) login(clientID uint32, userID uint32, scope string) (*token.OauthAccessToken, *token.OauthRefreshToken, error) {
-	at, err := h.tokenSvc.GrantAccessToken(clientID, userID, scope, 3600)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	refreshTokenExp := 1209600 // 14 days
-	rt, err := h.tokenSvc.GetOrCreateRefreshToken(clientID, userID, scope, refreshTokenExp)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return at, rt, err
 }

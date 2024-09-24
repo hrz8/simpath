@@ -60,7 +60,7 @@ func (h *Handler) authenticate(userSession *session.UserSession) error {
 	}
 
 	// login to create access token and refresh token for user
-	at, rt, err := h.login(
+	at, rt, err := h.tokenSvc.Login(
 		refreshToken.ClientID,
 		refreshToken.UserID,
 		refreshToken.Scope,

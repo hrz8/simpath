@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hrz8/simpath/config"
 )
 
 var (
@@ -23,6 +24,21 @@ func NewService(db *sql.DB) *Service {
 	return &Service{
 		db: db,
 	}
+}
+
+func (s *Service) Login(clientID uint32, userID uint32, scope string) (*OauthAccessToken, *OauthRefreshToken, error) {
+	at, err := s.GrantAccessToken(clientID, userID, scope, config.AccessTokenLifetime)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	refreshTokenExp := config.RefreshTokenLifetime
+	rt, err := s.GetOrCreateRefreshToken(clientID, userID, scope, refreshTokenExp)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return at, rt, err
 }
 
 const softDeleteExpiredAccessToken = `
@@ -124,12 +140,12 @@ func (s *Service) GetOrCreateRefreshToken(clientID uint32, userID uint32, scope 
 		return nil, err
 	}
 
-	var tkn OauthRefreshToken
+	tkn := new(OauthRefreshToken)
 	tokenVal := generateRefreshToken()
 	err = tx.QueryRow(
 		createNewRefreshToken,
 		clientID,
-		clientID,
+		userID,
 		tokenVal,
 		scope,
 		time.Now().UTC().Add(time.Duration(expiresIn)*time.Second),
@@ -156,7 +172,7 @@ func (s *Service) GetOrCreateRefreshToken(clientID uint32, userID uint32, scope 
 		return nil, err
 	}
 
-	return &tkn, nil
+	return tkn, nil
 }
 
 const getValidRefreshToken = `
@@ -168,8 +184,7 @@ const getValidRefreshToken = `
 `
 
 func (s *Service) GetValidRefreshToken(token string, clientID uint32) (*OauthRefreshToken, error) {
-	var tkn OauthRefreshToken
-
+	tkn := new(OauthRefreshToken)
 	err := s.db.QueryRow(
 		getValidRefreshToken,
 		clientID,
@@ -196,7 +211,7 @@ func (s *Service) GetValidRefreshToken(token string, clientID uint32) (*OauthRef
 		return nil, ErrRefreshTokenExpired
 	}
 
-	return &tkn, nil
+	return tkn, nil
 }
 
 const getAccessToken = `
@@ -241,7 +256,7 @@ func (s *Service) Authenticate(token string) (*OauthAccessToken, error) {
 	}
 
 	// extends refresh token
-	newExpiry := time.Now().Add(1209600 * time.Second) // 14 days
+	newExpiry := time.Now().Add(config.RefreshTokenLifetime * time.Second) // 14 days
 	_, err = s.db.Exec(updateRefreshToken, newExpiry, tkn.ClientID, tkn.UserID)
 	if err != nil {
 		return nil, err

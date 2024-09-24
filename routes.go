@@ -15,4 +15,5 @@ func addRoutes(mux *http.ServeMux, hdl *handler.Handler) {
 	// backend
 	mux.Handle("POST /v1/login", hdl.ShouldHaveClientID(hdl.GuestOnly(http.HandlerFunc(hdl.LoginHandler))))
 	mux.Handle("POST /v1/authorize", hdl.ShouldHaveClientID(hdl.LoggedInOnly(http.HandlerFunc(hdl.AuthorizeHandler))))
+	mux.HandleFunc("POST /v1/oauth/tokens", hdl.TokenHandler)
 }

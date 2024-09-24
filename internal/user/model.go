@@ -7,7 +7,8 @@ import (
 type OauthUser struct {
 	ID                uint32
 	Role              *role.OauthRole
-	RoleID            string
+	RoleID            uint32
 	Email             string
 	EncryptedPassword string
+	PublicID          string
 }

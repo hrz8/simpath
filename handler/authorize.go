@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/hrz8/simpath/config"
 	"github.com/hrz8/simpath/internal/client"
 	"github.com/hrz8/simpath/internal/user"
 )
@@ -90,7 +91,7 @@ func (h *Handler) AuthorizeHandler(w http.ResponseWriter, r *http.Request) {
 		user.ID,
 		redirectURI.String(),
 		scope,
-		3600, // 1 hour
+		config.AccessTokenLifetime,
 	)
 	if err != nil {
 		redirectError(w, r, redirectURI, "server_error", state)
