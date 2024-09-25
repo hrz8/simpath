@@ -14,6 +14,8 @@ go run .
 ## Web
 Open your favorite browser
 ```
+http://localhost:8088/signin
+# this will redirect you to
 http://localhost:5001/v1/authorize?client_id=600ef080-d02c-426d-bf79-64247ba0fc90&redirect_uri=http%3A%2F%2Flocalhost%3A8088%2Fsignin&scope=read_write&state=somestate
 ```
 
