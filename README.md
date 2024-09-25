@@ -1,7 +1,10 @@
 # simpath
 
 It's a simple auth identity provider.
+
 Right now it only support random uuid for tokens. Next, will implement JWT.
+
+Inspired by [go-oauth2-server](https://github.com/RichardKnop/go-oauth2-server)
 
 ## Run
 ```bash
