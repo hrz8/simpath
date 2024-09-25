@@ -6,17 +6,19 @@ import (
 	"net/http"
 
 	"github.com/gorilla/sessions"
+	"github.com/hrz8/simpath/config"
 )
 
 type Service struct {
-	sessionStore   sessions.Store
-	sessionOptions *sessions.Options
-	session        *sessions.Session
-	r              *http.Request
-	w              http.ResponseWriter
+	store       sessions.Store
+	options     *sessions.Options
+	userSession *sessions.Session
+	session     *sessions.Session
+	r           *http.Request
+	w           http.ResponseWriter
 }
 
-type UserSession struct {
+type UserData struct {
 	ClientID     uint32
 	ClientUUID   string
 	Email        string
@@ -25,24 +27,21 @@ type UserSession struct {
 }
 
 var (
-	StorageSessionName   = "simpath_session"
-	UserSessionKey       = "simpath_user"
 	ErrSessionNotStarted = errors.New("Session not started")
 )
 
 func init() {
-	gob.Register(new(UserSession))
+	gob.Register(new(UserData))
 }
 
 func NewService() *Service {
-	cookieStore := sessions.NewCookieStore([]byte("some_secret"))
-
+	store := sessions.NewCookieStore([]byte(config.SessionSecretKey))
 	return &Service{
-		sessionStore: cookieStore,
-		sessionOptions: &sessions.Options{
-			Path:     "/",
-			MaxAge:   604800,
-			HttpOnly: true,
+		store: store, // max age default set to be 30 days
+		options: &sessions.Options{
+			Path:     config.SessionPath,
+			MaxAge:   config.SessionMaxAge,
+			HttpOnly: config.SessionHttpOnly,
 		},
 	}
 }
@@ -53,41 +52,13 @@ func (s *Service) SetSessionService(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) StartSession() error {
-	session, err := s.sessionStore.Get(s.r, StorageSessionName)
+	session, err := s.store.Get(s.r, config.SessionName)
 	if err != nil {
 		return err
 	}
+	session.Options.MaxAge = 20
 	s.session = session
 	return nil
-}
-
-func (s *Service) GetUserSession() (*UserSession, error) {
-	if s.session == nil {
-		return nil, ErrSessionNotStarted
-	}
-	userSession, ok := s.session.Values[UserSessionKey].(*UserSession)
-	if !ok {
-		return nil, errors.New("User session type assertion error")
-	}
-
-	return userSession, nil
-}
-
-func (s *Service) SetUserSession(userSession *UserSession) error {
-	if s.session == nil {
-		return ErrSessionNotStarted
-	}
-	s.session.Values[UserSessionKey] = userSession
-	return s.session.Save(s.r, s.w)
-}
-
-func (s *Service) ClearUserSession() error {
-	if s.session == nil {
-		return ErrSessionNotStarted
-	}
-
-	delete(s.session.Values, UserSessionKey)
-	return s.session.Save(s.r, s.w)
 }
 
 func (s *Service) SetFlashMessage(msg string) error {

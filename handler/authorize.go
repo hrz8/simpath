@@ -19,7 +19,10 @@ func (h *Handler) AuthorizeFormHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	flashMsg, _ := h.sessionSvc.GetFlashMessage()
+	csrfToken, _ := h.sessionSvc.GetCSRFToken()
+
 	data := map[string]any{
+		"csrf_token":  csrfToken,
 		"error":       flashMsg,
 		"queryString": getQueryString(r.URL.Query()),
 		"clientID":    client.AppName,
@@ -49,13 +52,13 @@ func (h *Handler) authorizeCommon(ctx context.Context) (*client.OauthClient, *us
 		return nil, nil, http.StatusInternalServerError, err
 	}
 
-	// check if userSession injected to context
-	userSession, err := getUserSession(ctx)
+	// check if userData injected to context
+	userData, err := getUserDataFromSession(ctx)
 	if err != nil {
 		return nil, nil, http.StatusInternalServerError, err
 	}
 
-	usr, err := h.userSvc.FindUserByEmail(userSession.Email)
+	usr, err := h.userSvc.FindUserByEmail(userData.Email)
 	if err != nil {
 		return nil, nil, http.StatusBadRequest, err
 	}

@@ -25,7 +25,7 @@ type contextKey int
 
 const (
 	clientKey contextKey = iota
-	userSessionKey
+	userDataKey
 )
 
 var (
@@ -104,8 +104,8 @@ func getClient(ctx context.Context) (*client.OauthClient, error) {
 	return cli, nil
 }
 
-func getUserSession(ctx context.Context) (*session.UserSession, error) {
-	cli, ok := ctx.Value(userSessionKey).(*session.UserSession)
+func getUserDataFromSession(ctx context.Context) (*session.UserData, error) {
+	cli, ok := ctx.Value(userDataKey).(*session.UserData)
 	if !ok {
 		return nil, ErrUserSessionNotPresent
 	}

@@ -8,8 +8,10 @@ import (
 
 func (h *Handler) LoginFormHandler(w http.ResponseWriter, r *http.Request) {
 	flashMsg, _ := h.sessionSvc.GetFlashMessage()
+	csrfToken, _ := h.sessionSvc.GetCSRFToken()
 
 	data := map[string]any{
+		"csrf_token":  csrfToken,
 		"error":       flashMsg,
 		"queryString": r.URL.RawQuery,
 	}
@@ -49,7 +51,7 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.sessionSvc.SetUserSession(&session.UserSession{
+	if err := h.sessionSvc.SetUserData(&session.UserData{
 		ClientID:     cli.ID,
 		ClientUUID:   cli.ClientID,
 		Email:        user.Email,

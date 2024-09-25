@@ -1,7 +1,18 @@
 package config
 
 const (
-	AccessTokenLifetime  = 3600
+	DatabaseURL = "postgres://postgres:toor@localhost:5432/simpath?sslmode=disable"
+	// token
+	AccessTokenLifetime  = 7200    // 2 hours
 	RefreshTokenLifetime = 1209600 // 14 days
-	AuthCodeLifetime     = 3600
+	AuthCodeLifetime     = 7200
+	// session
+	SessionSecretKey    = "kcp?l2Qh39{89Wq2"
+	SessionPath         = "/"
+	SessionMaxAge       = 604800 // 7 days
+	SessionHttpOnly     = true
+	SessionName         = "simpath_session"
+	UserSessionName     = "simpath_session_user"
+	UserDataSessionKey  = "userdata"
+	CSRFTokenSessionKey = "csrftoken"
 )

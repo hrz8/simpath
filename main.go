@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hrz8/simpath/config"
 	"github.com/hrz8/simpath/database"
 	"github.com/hrz8/simpath/handler"
 	"github.com/hrz8/simpath/internal/authcode"
@@ -56,7 +57,7 @@ func main() {
 	execCtx, execCancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer execCancel()
 
-	db, err := database.ConnectDB("postgres://postgres:toor@localhost:5432/simpath?sslmode=disable")
+	db, err := database.ConnectDB(config.DatabaseURL)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -2,44 +2,12 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"net/url"
 
 	"github.com/hrz8/simpath/session"
 )
 
-func redirectToURL(w http.ResponseWriter, r *http.Request, uri *url.URL, query url.Values) {
-	to := fmt.Sprintf("%s%s", uri.String(), getQueryString(query))
-	http.Redirect(w, r, to, http.StatusFound)
-}
-
-func redirectSelf(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, r.RequestURI, http.StatusFound)
-}
-
-func redirectLogin(w http.ResponseWriter, r *http.Request) {
-	to := fmt.Sprintf("/v1/login%s", getQueryString(r.URL.Query()))
-	http.Redirect(w, r, to, http.StatusFound)
-}
-
-func redirectAuthorize(w http.ResponseWriter, r *http.Request) {
-	to := fmt.Sprintf("/v1/authorize%s", getQueryString(r.URL.Query()))
-	http.Redirect(w, r, to, http.StatusFound)
-}
-
-func redirectError(w http.ResponseWriter, r *http.Request, redirectURI *url.URL, err, state string) {
-	query := redirectURI.Query()
-	query.Set("error", err)
-	if state != "" {
-		query.Set("state", state)
-	}
-
-	to := redirectURI.String()
-	http.Redirect(w, r, fmt.Sprintf("%s%s", to, getQueryString(query)), http.StatusFound)
-}
-
-func (h *Handler) authenticate(userSession *session.UserSession) error {
+func (h *Handler) authenticate(userSession *session.UserData) error {
 	// try to authenticate with access token
 	_, err := h.tokenSvc.Authenticate(userSession.AccessToken)
 	if err == nil {
@@ -76,15 +44,51 @@ func (h *Handler) authenticate(userSession *session.UserSession) error {
 	return nil
 }
 
-func (h *Handler) ShouldHaveClientID(next http.Handler) http.Handler {
+// Use to setup global session like csrf token
+func (h *Handler) UseSession(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		h.sessionSvc.SetSessionService(w, r)
+		if err := h.sessionSvc.StartSession(); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if err := h.sessionSvc.SetCSRFToken(); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
 
-		// parse so we can perform r.Form.Get()
+// Use to start user data session, so in the handler we can check if the user data already set or not
+func (h *Handler) UseUserSession(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		h.sessionSvc.SetSessionService(w, r)
+		if err := h.sessionSvc.StartUserSession(); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// Use to parse form so we can perform r.Form.Get()
+func (h *Handler) UseForm(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func (h *Handler) CheckClientID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		clientID := r.Form.Get("client_id")
 		client, err := h.clientSvc.FindClientByClientUUID(clientID)
 		if err != nil {
@@ -100,29 +104,21 @@ func (h *Handler) LoggedInOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		// start cookie session
-		h.sessionSvc.SetSessionService(w, r)
-		if err := h.sessionSvc.StartSession(); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		// fetch user's session
-		userSession, err := h.sessionSvc.GetUserSession()
+		// fetch user's data session
+		userData, err := h.sessionSvc.GetUserData()
 		if err != nil {
 			redirectLogin(w, r)
 			return
 		}
-		ctx = context.WithValue(ctx, userSessionKey, userSession) // set user session to context
+		ctx = context.WithValue(ctx, userDataKey, userData) // set user session to context
 
 		// authenticate (possibly mutate the userSession if refresh token expired)
-		err = h.authenticate(userSession)
+		err = h.authenticate(userData)
 		if err != nil {
 			redirectLogin(w, r)
 			return
 		}
-
-		h.sessionSvc.SetUserSession(userSession)
+		h.sessionSvc.SetUserData(userData)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -132,20 +128,32 @@ func (h *Handler) GuestOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		// start cookie session
-		h.sessionSvc.SetSessionService(w, r)
-		if err := h.sessionSvc.StartSession(); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
 		// prevent logged-in user to access the login page again
-		_, err := h.sessionSvc.GetUserSession()
+		_, err := h.sessionSvc.GetUserData()
 		if err == nil {
 			redirectAuthorize(w, r)
 			return
 		}
 
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func (h *Handler) CheckCSRFToken(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		csrfToken := r.Form.Get("csrf_token")
+		csrfTokenFromSession, err := h.sessionSvc.GetCSRFToken()
+		if err != nil || csrfTokenFromSession == "" {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if csrfToken != csrfTokenFromSession {
+			h.sessionSvc.SetFlashMessage("Invalid or expired csrf token")
+			redirectSelf(w, r)
+			return
+		}
+		next.ServeHTTP(w, r.WithContext(ctx))
+
 	})
 }
