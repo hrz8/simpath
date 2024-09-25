@@ -13,7 +13,7 @@ func (h *Handler) LoginFormHandler(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{
 		"csrf_token":  csrfToken,
 		"error":       flashMsg,
-		"queryString": r.URL.RawQuery,
+		"queryString": getQueryString(r.URL.Query()),
 	}
 	templateRender(w, r, "landing.html", "login.html", data)
 }

@@ -32,6 +32,7 @@ func addRoutes(r *chi.Mux, hdl *handler.Handler) {
 
 				// guest only
 				r.With(hdl.GuestOnly).Post("/login", hdl.LoginHandler)
+				r.With(hdl.GuestOnly).Post("/register", hdl.RegisterHandler)
 
 				// logged in only
 				r.With(hdl.LoggedInOnly).Post("/authorize", hdl.AuthorizeHandler)

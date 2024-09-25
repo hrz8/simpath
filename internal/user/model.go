@@ -1,6 +1,8 @@
 package user
 
 import (
+	"time"
+
 	"github.com/hrz8/simpath/internal/role"
 )
 
@@ -10,5 +12,7 @@ type OauthUser struct {
 	RoleID            uint32
 	Email             string
 	EncryptedPassword string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 	PublicID          string
 }

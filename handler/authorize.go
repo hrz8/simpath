@@ -82,6 +82,12 @@ func (h *Handler) AuthorizeHandler(w http.ResponseWriter, r *http.Request) {
 	state := r.Form.Get("state")
 	reqScope := r.Form.Get("scope")
 
+	authorized := len(r.Form.Get("allow")) > 0
+	if !authorized {
+		redirectError(w, r, redirectURI, "access_denied", state)
+		return
+	}
+
 	scope, err := h.scopeSvc.FindScope(reqScope)
 	if err != nil {
 		redirectError(w, r, redirectURI, "invalid_scope", state)
