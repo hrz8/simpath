@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/hrz8/simpath/config"
@@ -61,11 +60,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer db.Close()
 
-	err = database.RunMigrations(db)
-	if err != nil {
-		log.Fatal(err)
+	if config.AutoMigrate {
+		err = database.RunMigrations(db)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	srv := &http.Server{Addr: ":5001", Handler: newServer(db)}
@@ -84,9 +84,5 @@ func main() {
 		fmt.Println("shutdown...")
 	}
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := srv.Shutdown(shutdownCtx); err != nil {
-		fmt.Printf("err shutdown http server: %+v", err)
-	}
+	cleanup(srv, db)
 }
