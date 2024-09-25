@@ -149,7 +149,7 @@ func (h *Handler) CheckCSRFToken(next http.Handler) http.Handler {
 			return
 		}
 		if csrfToken != csrfTokenFromSession {
-			h.sessionSvc.SetFlashMessage("Invalid or expired csrf token")
+			h.sessionSvc.SetFlashMessage("Invalid or expired form")
 			redirectSelf(w, r)
 			return
 		}

@@ -5,7 +5,7 @@ Right now it only support random uuid for tokens. Next, will implement JWT.
 
 ## Run
 ```bash
-go run main.go
+go run .
 ```
 
 ## Web
