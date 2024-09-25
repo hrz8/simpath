@@ -56,7 +56,7 @@ func (s *Service) StartSession() error {
 	if err != nil {
 		return err
 	}
-	session.Options.MaxAge = 20
+	session.Options.MaxAge = s.options.MaxAge
 	s.session = session
 	return nil
 }

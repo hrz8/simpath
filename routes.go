@@ -1,23 +1,45 @@
 package main
 
 import (
-	"net/http"
-
+	"github.com/go-chi/chi/v5"
 	"github.com/hrz8/simpath/handler"
 )
 
-func addRoutes(mux *http.ServeMux, hdl *handler.Handler) {
-	// web
-	mux.Handle("GET /v1/login", hdl.UseSession(hdl.UseUserSession(hdl.UseForm(hdl.CheckClientID(hdl.GuestOnly(http.HandlerFunc(hdl.LoginFormHandler)))))))
-	mux.Handle("GET /v1/register", hdl.UseSession(hdl.UseUserSession(hdl.UseForm(hdl.CheckClientID(hdl.GuestOnly(http.HandlerFunc(hdl.RegisterFormHandler)))))))
-	mux.Handle("GET /v1/authorize", hdl.UseSession(hdl.UseUserSession(hdl.UseForm(hdl.CheckClientID(hdl.LoggedInOnly(http.HandlerFunc(hdl.AuthorizeFormHandler)))))))
-	mux.Handle("GET /v1/logout", hdl.UseSession(hdl.UseUserSession(hdl.UseForm(hdl.CheckClientID(hdl.LoggedInOnly(http.HandlerFunc(hdl.LogoutPage)))))))
+func addRoutes(r *chi.Mux, hdl *handler.Handler) {
+	// /v1 router
+	r.Route("/v1", func(r chi.Router) {
+		// non json handlers
+		r.Route("/", func(r chi.Router) {
+			r.Use(hdl.UseSession, hdl.UseUserSession, hdl.UseForm, hdl.CheckClientID)
 
-	// backend - form handler
-	mux.Handle("POST /v1/login", hdl.UseSession(hdl.UseUserSession(hdl.UseForm(hdl.CheckCSRFToken(hdl.CheckClientID(hdl.GuestOnly(http.HandlerFunc(hdl.LoginHandler))))))))
-	mux.Handle("POST /v1/authorize", hdl.UseSession(hdl.UseUserSession(hdl.UseForm(hdl.CheckCSRFToken(hdl.CheckClientID(hdl.LoggedInOnly(http.HandlerFunc(hdl.AuthorizeHandler))))))))
+			// web - guest only
+			r.Group(func(r chi.Router) {
+				r.Use(hdl.GuestOnly)
+				r.Get("/login", hdl.LoginFormHandler)
+				r.Get("/register", hdl.RegisterFormHandler)
+			})
 
-	// backend - json
-	mux.HandleFunc("POST /v1/oauth/tokens", hdl.TokenHandler)
-	mux.HandleFunc("POST /v1/oauth/introspect", hdl.IntrospectHandler)
+			// web - logged in only
+			r.Group(func(r chi.Router) {
+				r.Use(hdl.LoggedInOnly)
+				r.Get("/authorize", hdl.AuthorizeFormHandler)
+				r.Get("/logout", hdl.LogoutPage)
+			})
+
+			// backend - form handler - csrf protection
+			r.Group(func(r chi.Router) {
+				r.Use(hdl.CheckCSRFToken)
+
+				// guest only
+				r.With(hdl.GuestOnly).Post("/login", hdl.LoginHandler)
+
+				// logged in only
+				r.With(hdl.LoggedInOnly).Post("/authorize", hdl.AuthorizeHandler)
+			})
+		})
+
+		// backend - json
+		r.Post("/oauth/tokens", hdl.TokenHandler)
+		r.Post("/oauth/introspect", hdl.IntrospectHandler)
+	})
 }

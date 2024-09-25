@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/hrz8/simpath/config"
 	"github.com/hrz8/simpath/database"
 	"github.com/hrz8/simpath/handler"
@@ -24,9 +25,8 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-func newServer(db *sql.DB) *http.ServeMux {
-	mux := http.NewServeMux()
-
+func newServer(db *sql.DB) *chi.Mux {
+	mux := chi.NewRouter()
 	sessionSvc := session.NewService()
 	userSvc := user.NewService(db)
 	clientSvc := client.NewService(db)

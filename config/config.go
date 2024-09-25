@@ -7,9 +7,10 @@ const (
 	RefreshTokenLifetime = 1209600 // 14 days
 	AuthCodeLifetime     = 7200
 	// session
-	SessionSecretKey    = "kcp?l2Qh39{89Wq2"
-	SessionPath         = "/"
-	SessionMaxAge       = 604800 // 7 days
+	SessionSecretKey = "kcp?l2Qh39{89Wq2"
+	SessionPath      = "/"
+	// SessionMaxAge       = 604800 // 7 days
+	SessionMaxAge       = 3600 // 1 hour
 	SessionHttpOnly     = true
 	SessionName         = "simpath_session"
 	UserSessionName     = "simpath_session_user"
