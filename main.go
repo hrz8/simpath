@@ -22,10 +22,12 @@ import (
 	"github.com/hrz8/simpath/internal/user"
 	"github.com/hrz8/simpath/session"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/rs/cors"
 )
 
 func newServer(db *sql.DB) *chi.Mux {
 	mux := chi.NewRouter()
+
 	sessionSvc := session.NewService()
 	userSvc := user.NewService(db)
 	clientSvc := client.NewService(db)
@@ -47,6 +49,14 @@ func newServer(db *sql.DB) *chi.Mux {
 		introspectSvc,
 	)
 
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{config.AllowClient},
+		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
+		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		AllowCredentials: true,
+	})
+
+	mux.Use(c.Handler)
 	addRoutes(mux, hdl)
 
 	return mux

@@ -35,21 +35,26 @@ func main() {
 		code := queryParams.Get("code")
 		if code != "" {
 			data := map[string]any{
-				"isCode": true,
-				"code":   code,
+				"isCode":         true,
+				"code":           code,
+				"clientID":       "600ef080-d02c-426d-bf79-64247ba0fc90",
+				"clientSecret":   "test_secret",
+				"redirectURIRaw": "http://localhost:8088/signin",
 			}
 			templateRender(w, r, "client_login.html", data)
 			return
 		}
 
 		data := map[string]any{
-			"isCode":      false,
-			"loginURL":    "http://localhost:5001/v1/authorize",
-			"clientID":    "600ef080-d02c-426d-bf79-64247ba0fc90",
-			"redirectURI": url.QueryEscape("http://localhost:8088/signin"),
-			"scope":       "read_write",
-			"state":       "somestate",
-			"btnLabel":    "Login dengan Simpath",
+			"isCode":         false,
+			"loginURL":       "http://localhost:5001/v1/authorize",
+			"clientID":       "600ef080-d02c-426d-bf79-64247ba0fc90",
+			"clientSecret":   "test_secret",
+			"redirectURIRaw": "http://localhost:8088/signin",
+			"redirectURI":    url.QueryEscape("http://localhost:8088/signin"),
+			"scope":          "read_write",
+			"state":          "somestate",
+			"btnLabel":       "Login dengan Simpath",
 		}
 		templateRender(w, r, "client_login.html", data)
 	})

@@ -35,6 +35,48 @@
   </div>
 
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+  <script>
+    const code = "{{ .code }}";
+    if (code != "<no value>") {
+      async function sendOAuthRequest() {
+        const url = 'http://localhost:5001/v1/oauth/tokens';
+
+        const clientId = "{{ .clientID }}"
+        const clientSecret = "{{ .clientSecret }}";
+        const basicAuth = btoa(`${clientId}:${clientSecret}`);
+
+        const body = {
+          grant_type: "authorization_code",
+          code: code,
+          redirect_uri: "{{ .redirectURIRaw }}"
+        };
+
+        try {
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Basic ${basicAuth}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            alert(`Access Token: ${data.access_token}`);
+          } else {
+            alert(`Authorization Code Expired with Status: ${response.status}/${response.statusText}`);
+          }
+        } catch (error) {
+          console.error('Error:', error);
+        }
+      }
+
+      setTimeout(function() {
+        sendOAuthRequest();
+      }, 2000);
+    }
+  </script>
 </body>
 </html>
 {{ end }}

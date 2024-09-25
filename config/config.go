@@ -3,6 +3,7 @@ package config
 const (
 	DatabaseURL = "postgres://postgres:toor@localhost:5432/simpath?sslmode=disable"
 	AutoMigrate = true
+	AllowClient = "http://localhost:8088"
 	// token
 	AccessTokenLifetime  = 7200    // 2 hours
 	RefreshTokenLifetime = 1209600 // 14 days
