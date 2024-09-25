@@ -32,6 +32,8 @@ func cleanup(srv *http.Server, db *sql.DB) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+
+		// should be closed immediately no need to set timeout
 		if err := db.Close(); err != nil {
 			fmt.Printf("err close database connection: %+v", err)
 		}

@@ -5,13 +5,16 @@ Right now it only support random uuid for tokens. Next, will implement JWT.
 
 ## Run
 ```bash
+# start mock client
+go run cmd/client/main.go
+# start oauth server
 go run .
 ```
 
 ## Web
 Open your favorite browser
 ```
-http://localhost:5001/v1/login?client_id=600ef080-d02c-426d-bf79-64247ba0fc90&redirect_uri=https%3A%2F%2Fwww.example.com&scope=read_write&state=somestate
+http://localhost:5001/v1/authorize?client_id=600ef080-d02c-426d-bf79-64247ba0fc90&redirect_uri=http%3A%2F%2Flocalhost%3A8088%2Fsignin&scope=read_write&state=somestate
 ```
 
 Login with
@@ -30,7 +33,7 @@ curl -X POST "localhost:5001/v1/oauth/tokens" \
      -d '{
            "grant_type": "authorization_code",
            "code": "66a97c2b-c3e7-4ab8-bd0b-2dbffb5e70b9",
-           "redirect_uri": "https://www.example.com"
+           "redirect_uri": "http://localhost:8088/signin"
          }'
 ```
 
