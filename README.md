@@ -6,9 +6,9 @@ Right now it only support random uuid for tokens. Next, will implement JWT.
 ## Run
 ```bash
 # start mock client
-go run cmd/client/main.go
+go run ./cmd/client
 # start oauth server
-go run .
+go run ./cmd/server
 ```
 
 ## Web
