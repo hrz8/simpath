@@ -29,7 +29,7 @@
   {{ if .isCode }}
     <div class="alert alert-success" role="alert">{{ .code }}</div>
   {{ else }}
-    {{ $login := sprintf "%s?client_id=%s&redirect_uri=%s&scope=%s&state=%s" .loginURL .clientID .redirectURI .scope .state  }}
+    {{ $login := sprintf "%s?client_id=%s&login_redirect_uri=%s&redirect_uri=%s&scope=%s&state=%s" .loginURL .clientID .loginRedirectURI .redirectURI .scope .state  }}
     <a href="{{ $login }}" class="btn btn-lg btn-primary btn-block">{{ .btnLabel }}</a>
   {{ end }}
   </div>

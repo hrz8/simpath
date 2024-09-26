@@ -6,6 +6,10 @@ import (
 	"github.com/hrz8/simpath/session"
 )
 
+var (
+	defaultLoginRedirectURI = "/v1/dashboard"
+)
+
 func (h *Handler) LoginFormHandler(w http.ResponseWriter, r *http.Request) {
 	flashMsg, _ := h.sessionSvc.GetFlashMessage()
 	csrfToken, _ := h.sessionSvc.GetCSRFToken()
@@ -63,5 +67,15 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	redirectAuthorize(w, r)
+	loginRedirectURI := r.URL.Query().Get("login_redirect_uri")
+	if loginRedirectURI == "" {
+		loginRedirectURI = defaultLoginRedirectURI
+	}
+
+	if loginRedirectURI == "/v1/authorize" {
+		redirectAuthorize(w, r)
+		return
+	}
+
+	redirectToPath(w, r, loginRedirectURI)
 }

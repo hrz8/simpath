@@ -15,6 +15,7 @@ import (
 	"github.com/hrz8/simpath/handler"
 	"github.com/hrz8/simpath/internal/authcode"
 	"github.com/hrz8/simpath/internal/client"
+	"github.com/hrz8/simpath/internal/consent"
 	"github.com/hrz8/simpath/internal/introspect"
 	"github.com/hrz8/simpath/internal/scope"
 	"github.com/hrz8/simpath/internal/token"
@@ -36,6 +37,7 @@ func newServer(db *sql.DB) *chi.Mux {
 	authCodeSvc := authcode.NewService(db)
 	tokenGrantSvc := tokengrant.NewService(db, scopeSvc, userSvc, tokenSvc, authCodeSvc)
 	introspectSvc := introspect.NewService(db, userSvc, tokenSvc)
+	consentSvc := consent.NewService(db)
 
 	hdl := handler.NewHandler(
 		db,
@@ -47,6 +49,7 @@ func newServer(db *sql.DB) *chi.Mux {
 		authCodeSvc,
 		tokenGrantSvc,
 		introspectSvc,
+		consentSvc,
 	)
 
 	c := cors.New(cors.Options{
@@ -63,7 +66,7 @@ func newServer(db *sql.DB) *chi.Mux {
 }
 
 func main() {
-	execCtx, execCancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	execCtx, execCancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGKILL)
 	defer execCancel()
 
 	db, err := database.ConnectDB(config.DatabaseURL)
