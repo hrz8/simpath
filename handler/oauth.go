@@ -69,13 +69,7 @@ func (h *Handler) AuthClient(clientID, secret string) (*client.OauthClient, erro
 	return cli, nil
 }
 
-func (h *Handler) TokenHandler(w http.ResponseWriter, r *http.Request) {
-	body := new(tokengrant.TokenExchangeBody)
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid body", http.StatusBadRequest)
-		return
-	}
-
+func (h *Handler) issueToken(w http.ResponseWriter, r *http.Request, body *tokengrant.TokenExchangeBody) {
 	// map of grant types against each functions
 	grantTypes := map[string]func(body *tokengrant.TokenExchangeBody, client *client.OauthClient) (*tokengrant.AccessTokenResponse, error){
 		"authorization_code": h.tokenGrantSvc.AuthorizationCodeGrant,
@@ -106,6 +100,27 @@ func (h *Handler) TokenHandler(w http.ResponseWriter, r *http.Request) {
 
 	// write response to json
 	response.WriteJSON(w, resp, 200)
+}
+
+func (h *Handler) TokenHandlerJSON(w http.ResponseWriter, r *http.Request) {
+	body := new(tokengrant.TokenExchangeBody)
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid body", http.StatusBadRequest)
+		return
+	}
+	h.issueToken(w, r, body)
+}
+
+func (h *Handler) TokenHandlerForm(w http.ResponseWriter, r *http.Request) {
+	body := new(tokengrant.TokenExchangeBody)
+	body.GrantType = r.Form.Get("grant_type")
+	body.Email = r.Form.Get("email")
+	body.Password = r.Form.Get("password")
+	body.RefreshToken = r.Form.Get("refresh_token")
+	body.Code = r.Form.Get("code")
+	body.RedirectURI = r.Form.Get("redirect_uri")
+	body.Scope = r.Form.Get("scope")
+	h.issueToken(w, r, body)
 }
 
 func (h *Handler) IntrospectHandler(w http.ResponseWriter, r *http.Request) {

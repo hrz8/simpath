@@ -8,8 +8,10 @@ Inspired by [go-oauth2-server](https://github.com/RichardKnop/go-oauth2-server)
 
 ## Run
 ```bash
-# start mock client
-go run ./cmd/client
+# start mock client (this client is plain)
+go run ./cmd/client # start at 8088
+# start oauth client (this client using golang oauth2 library)
+go run ./cmd/oauthclient # start at 8089
 # start oauth server
 go run ./cmd/server
 ```
@@ -17,7 +19,7 @@ go run ./cmd/server
 ## Web
 Open your favorite browser
 ```
-http://localhost:8088/signin
+http://localhost:8088/signin or http://localhost:8089/simpath_login
 # this will redirect you to
 http://localhost:5001/v1/authorize?client_id=600ef080-d02c-426d-bf79-64247ba0fc90&login_redirect_uri=%2Fv1%2Fauthorize&redirect_uri=http%3A%2F%2Flocalhost%3A8088%2Fsignin&scope=read_write&state=somestate
 ```

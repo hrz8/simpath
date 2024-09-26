@@ -39,8 +39,14 @@ func addRoutes(r *chi.Mux, hdl *handler.Handler) {
 			})
 		})
 
+		// backend - form-urlencoded
+		r.Route("/oauth2", func(r chi.Router) {
+			r.Use(hdl.UseForm)
+			r.Post("/token", hdl.TokenHandlerForm)
+		})
+
 		// backend - json
-		r.Post("/oauth/tokens", hdl.TokenHandler)
+		r.Post("/oauth/tokens", hdl.TokenHandlerJSON)
 		r.Post("/oauth/introspect", hdl.IntrospectHandler)
 	})
 }
