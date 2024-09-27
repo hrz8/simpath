@@ -7,7 +7,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hrz8/simpath/config"
+	"github.com/hrz8/simpath/internal/client"
 	"github.com/hrz8/simpath/internal/scope"
+	"github.com/hrz8/simpath/internal/user"
+	"github.com/hrz8/simpath/jwt"
 )
 
 var (
@@ -19,12 +22,14 @@ var (
 )
 
 type Service struct {
-	db       *sql.DB
-	scopeSvc *scope.Service
+	db        *sql.DB
+	userSvc   *user.Service
+	clientSvc *client.Service
+	scopeSvc  *scope.Service
 }
 
-func NewService(db *sql.DB, sSvc *scope.Service) *Service {
-	return &Service{db, sSvc}
+func NewService(db *sql.DB, uSvc *user.Service, cSvc *client.Service, sSvc *scope.Service) *Service {
+	return &Service{db, uSvc, cSvc, sSvc}
 }
 
 func (s *Service) Login(clientID uint32, userID uint32, scope string) (*OauthAccessToken, *OauthRefreshToken, error) {
@@ -74,8 +79,11 @@ func (s *Service) GrantAccessToken(clientID uint32, userID uint32, scope string,
 		return nil, err
 	}
 
-	var tkn OauthAccessToken
-	tokenVal := generateAccessToken()
+	tkn := new(OauthAccessToken)
+	tokenVal, err := s.generateAccessToken(userID, clientID, scope)
+	if err != nil {
+		return nil, err
+	}
 	err = tx.QueryRow(
 		createNewAccessToken,
 		clientID,
@@ -106,7 +114,7 @@ func (s *Service) GrantAccessToken(clientID uint32, userID uint32, scope string,
 		return nil, err
 	}
 
-	return &tkn, nil
+	return tkn, nil
 }
 
 const softDeleteExpiredRefreshToken = `
@@ -142,7 +150,10 @@ func (s *Service) GetOrCreateRefreshToken(clientID uint32, userID uint32, scope 
 	}
 
 	tkn := new(OauthRefreshToken)
-	tokenVal := generateRefreshToken()
+	tokenVal, err := s.generateRefreshToken(userID, clientID, scope)
+	if err != nil {
+		return nil, err
+	}
 	err = tx.QueryRow(
 		createNewRefreshToken,
 		clientID,
@@ -346,10 +357,58 @@ func (s *Service) ClearUserTokens(refreshToken string, accessToken string) {
 	}
 }
 
-func generateAccessToken() string {
-	return uuid.NewString()
+func (s *Service) generateAccessToken(userID uint32, clientID uint32, scope string) (string, error) {
+	usr, err := s.userSvc.FindUserByID(userID)
+	if err != nil {
+		return "", err
+	}
+
+	cli, err := s.clientSvc.FindClientByClientID(clientID)
+	if err != nil {
+		return "", err
+	}
+
+	tokenVal, err := jwt.GenerateAccessToken(
+		uuid.NewString(),
+		jwt.AccessTokenClaims{
+			Aud:         config.JWTAccessTokenAud, // this is a resource server, where access token is intended for
+			Sub:         usr.PublicID,
+			Scope:       scope,
+			ClientID:    cli.ClientID,
+			Permissions: []string{},
+			Roles:       []string{usr.RoleName},
+		},
+	)
+	if err != nil {
+		return "", err
+	}
+
+	return tokenVal, nil
 }
 
-func generateRefreshToken() string {
-	return uuid.NewString()
+func (s *Service) generateRefreshToken(userID uint32, clientID uint32, scope string) (string, error) {
+	usr, err := s.userSvc.FindUserByID(userID)
+	if err != nil {
+		return "", err
+	}
+
+	cli, err := s.clientSvc.FindClientByClientID(clientID)
+	if err != nil {
+		return "", err
+	}
+
+	tokenVal, err := jwt.GenerateRefreshToken(
+		uuid.NewString(),
+		jwt.RefreshTokenClaims{
+			Aud:      config.JWTRefreshTokenAud, // this is an auth server, where refresh token is intended for to be used by auth server itself
+			Sub:      usr.PublicID,
+			Scope:    scope,
+			ClientID: cli.ClientID,
+		},
+	)
+	if err != nil {
+		return "", err
+	}
+
+	return tokenVal, nil
 }

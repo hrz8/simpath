@@ -4,6 +4,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/sessions"
 	"github.com/hrz8/simpath/config"
@@ -19,11 +20,12 @@ type Service struct {
 }
 
 type UserData struct {
-	ClientID     uint32
-	ClientUUID   string
-	Email        string
-	AccessToken  string
-	RefreshToken string
+	ClientID        uint32
+	ClientUUID      string
+	Email           string
+	AccessToken     string
+	RefreshToken    string
+	AuthenticatedAt time.Time
 }
 
 var (

@@ -111,7 +111,7 @@ func (h *Handler) TokenHandlerJSON(w http.ResponseWriter, r *http.Request) {
 	h.issueToken(w, r, body)
 }
 
-func (h *Handler) TokenHandlerForm(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) TokenHandler(w http.ResponseWriter, r *http.Request) {
 	body := new(tokengrant.TokenExchangeBody)
 	body.GrantType = r.Form.Get("grant_type")
 	body.Email = r.Form.Get("email")

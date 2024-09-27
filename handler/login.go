@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/hrz8/simpath/session"
 )
@@ -56,11 +57,12 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.sessionSvc.SetUserData(&session.UserData{
-		ClientID:     cli.ID,
-		ClientUUID:   cli.ClientID,
-		Email:        user.Email,
-		AccessToken:  at.AccessToken,
-		RefreshToken: rt.RefreshToken,
+		ClientID:        cli.ID,
+		ClientUUID:      cli.ClientID,
+		Email:           user.Email,
+		AccessToken:     at.AccessToken,
+		RefreshToken:    rt.RefreshToken,
+		AuthenticatedAt: time.Now(),
 	}); err != nil {
 		h.sessionSvc.SetFlashMessage(err.Error())
 		redirectSelf(w, r)
@@ -72,7 +74,7 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		loginRedirectURI = defaultLoginRedirectURI
 	}
 
-	if loginRedirectURI == "/v1/authorize" {
+	if loginRedirectURI == "/v1/oauth2/authorize" {
 		redirectAuthorize(w, r)
 		return
 	}

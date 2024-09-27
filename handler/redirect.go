@@ -36,7 +36,7 @@ func redirectLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func redirectAuthorize(w http.ResponseWriter, r *http.Request) {
-	to := fmt.Sprintf("/v1/authorize%s", getQueryString(r.URL.Query()))
+	to := fmt.Sprintf("/v1/oauth2/authorize%s", getQueryString(r.URL.Query()))
 	http.Redirect(w, r, to, http.StatusFound)
 }
 

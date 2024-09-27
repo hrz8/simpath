@@ -7,6 +7,7 @@ const (
 	// token
 	AccessTokenLifetime  = 7200    // 2 hours
 	RefreshTokenLifetime = 1209600 // 14 days
+	IDTokenLifetime      = 7200
 	AuthCodeLifetime     = 7200
 	// session
 	SessionSecretKey = "kcp?l2Qh39{89Wq2"
@@ -18,4 +19,8 @@ const (
 	UserSessionName     = "simpath_session_user"
 	UserDataSessionKey  = "userdata"
 	CSRFTokenSessionKey = "csrftoken"
+	// JWT
+	JWTIssuer          = "http://localhost:5001"
+	JWTAccessTokenAud  = "resource-server-xyz"
+	JWTRefreshTokenAud = "http://localhost:5001"
 )

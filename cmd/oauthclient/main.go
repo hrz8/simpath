@@ -18,7 +18,7 @@ func addLoginRedirectURI(authURL string) (string, error) {
 		return "", errors.New("Error parsing URL")
 	}
 	query := parsedURL.Query()
-	query.Set("login_redirect_uri", "/v1/authorize")
+	query.Set("login_redirect_uri", "/v1/oauth2/authorize")
 	parsedURL.RawQuery = query.Encode()
 
 	return parsedURL.String(), nil
@@ -66,9 +66,9 @@ func main() {
 		RedirectURL:  "http://localhost:8089/simpath_callback",
 		ClientID:     "600ef080-d02c-426d-bf79-64247ba0fc90",
 		ClientSecret: "test_secret",
-		Scopes:       []string{"read_write"},
+		Scopes:       []string{"read_write", "openid"},
 		Endpoint: oauth2.Endpoint{
-			AuthURL:  "http://localhost:5001/v1/authorize",
+			AuthURL:  "http://localhost:5001/v1/oauth2/authorize",
 			TokenURL: "http://localhost:5001/v1/oauth2/token",
 		},
 	}

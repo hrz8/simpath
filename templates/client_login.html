@@ -39,7 +39,7 @@
     const code = "{{ .code }}";
     if (code != "<no value>") {
       async function sendOAuthRequest() {
-        const url = 'http://localhost:5001/v1/oauth/tokens';
+        const url = 'http://localhost:5001/v1/oauth2/external/token';
 
         const clientId = "{{ .clientID }}"
         const clientSecret = "{{ .clientSecret }}";

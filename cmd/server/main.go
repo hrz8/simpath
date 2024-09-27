@@ -33,7 +33,7 @@ func newServer(db *sql.DB) *chi.Mux {
 	userSvc := user.NewService(db)
 	clientSvc := client.NewService(db)
 	scopeSvc := scope.NewService(db)
-	tokenSvc := token.NewService(db, scopeSvc)
+	tokenSvc := token.NewService(db, userSvc, clientSvc, scopeSvc)
 	authCodeSvc := authcode.NewService(db)
 	tokenGrantSvc := tokengrant.NewService(db, scopeSvc, userSvc, tokenSvc, authCodeSvc)
 	introspectSvc := introspect.NewService(db, userSvc, tokenSvc)

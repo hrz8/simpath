@@ -2,13 +2,18 @@ package tokengrant
 
 import (
 	"database/sql"
+	"fmt"
+	"strings"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/hrz8/simpath/config"
 	"github.com/hrz8/simpath/internal/authcode"
 	"github.com/hrz8/simpath/internal/client"
 	"github.com/hrz8/simpath/internal/scope"
 	"github.com/hrz8/simpath/internal/token"
 	"github.com/hrz8/simpath/internal/user"
+	"github.com/hrz8/simpath/jwt"
 )
 
 type TokenExchangeBody struct {
@@ -38,6 +43,7 @@ func (s *Service) AuthorizationCodeGrant(body *TokenExchangeBody, client *client
 	if err != nil {
 		return nil, err
 	}
+	scope := authCode.Scope
 
 	accessToken, refreshToken, err := s.tokenSvc.Login(
 		authCode.ClientID,
@@ -48,21 +54,42 @@ func (s *Service) AuthorizationCodeGrant(body *TokenExchangeBody, client *client
 		return nil, err
 	}
 
-	s.authCodeSvc.DeleteAuthCode(authCode.ID)
-
 	var u *user.OauthUser
 	u, err = s.userSvc.FindUserByID(accessToken.UserID)
 	if err != nil {
 		return nil, err
 	}
-	return &AccessTokenResponse{
+
+	s.authCodeSvc.DeleteAuthCode(authCode.ID)
+	finalResp := &AccessTokenResponse{
 		AccessToken:  accessToken.AccessToken,
 		ExpiresIn:    config.AccessTokenLifetime,
 		TokenType:    "Bearer",
 		Scope:        accessToken.Scope,
 		UserID:       u.PublicID,
 		RefreshToken: refreshToken.RefreshToken,
-	}, nil
+	}
+
+	if strings.Contains(scope, "openid") {
+		jwtClaims := jwt.IDTokenClaims{
+			Aud:      client.ClientID, // this token is will be used by client because want to clone the userinfo data
+			Sub:      u.PublicID,
+			Scope:    authCode.Scope,
+			ClientID: client.ClientID,
+			AuthTime: time.Now().Add(-3 * time.Minute).Unix(), // TODO: mock for now
+			Name:     u.Email,
+			Email:    u.Email,
+			Picture:  fmt.Sprintf("https://imgur.com/%s.jpg", u.PublicID), // just mock
+		}
+		idTkn, err := jwt.GenerateIDToken(uuid.NewString(), jwtClaims)
+		if err != nil {
+			return nil, err
+		}
+
+		finalResp.IDToken = idTkn
+	}
+
+	return finalResp, nil
 }
 
 func (s *Service) RefreshTokenGrant(body *TokenExchangeBody, client *client.OauthClient) (*AccessTokenResponse, error) {
