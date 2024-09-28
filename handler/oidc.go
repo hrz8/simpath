@@ -3,7 +3,6 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
-	"os"
 
 	"github.com/hrz8/simpath/config"
 )
@@ -24,20 +23,20 @@ type JWKs struct {
 func (h *Handler) JWKSHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	modulus := os.Getenv("JWKS_MODULUS")
-	if modulus == "" {
+	modulus, err := config.JWKSModulus()
+	if err != nil {
 		http.Error(w, "server_error", http.StatusInternalServerError)
 		return
 	}
 
-	exponent := os.Getenv("JWKS_EXPONENT")
-	if exponent == "" {
+	exponent, err := config.JWKSExponent()
+	if err != nil {
 		http.Error(w, "server_error", http.StatusInternalServerError)
 		return
 	}
 
-	kid := os.Getenv("JWKS_KID")
-	if kid == "" {
+	kid, err := config.JWKSKid()
+	if err != nil {
 		http.Error(w, "server_error", http.StatusInternalServerError)
 		return
 	}

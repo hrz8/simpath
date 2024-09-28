@@ -1,5 +1,11 @@
 package config
 
+import (
+	"errors"
+	"os"
+	"strings"
+)
+
 const (
 	DatabaseURL = "postgres://postgres:toor@localhost:5432/simpath?sslmode=disable"
 	AutoMigrate = true
@@ -24,3 +30,49 @@ const (
 	JWTAccessTokenAud  = "resource-server-xyz"
 	JWTRefreshTokenAud = "http://localhost:5001"
 )
+
+func JWTPrivateKey() (string, error) {
+	pkRaw := os.Getenv("JWT_PRIVATE_KEY")
+	if pkRaw == "" {
+		return "", errors.New("missing private key")
+	}
+	pkRaw = restoreNewlines(pkRaw)
+	return pkRaw, nil
+}
+
+func JWTPublicKey() (string, error) {
+	pubRaw := os.Getenv("JWT_PUBLIC_KEY")
+	if pubRaw == "" {
+		return "", errors.New("missing public key")
+	}
+	pubRaw = restoreNewlines(pubRaw)
+	return pubRaw, nil
+}
+
+func JWKSKid() (string, error) {
+	kid := os.Getenv("JWKS_KID")
+	if kid == "" {
+		return "", errors.New("missing jwks kid")
+	}
+	return kid, nil
+}
+
+func JWKSModulus() (string, error) {
+	modulus := os.Getenv("JWKS_MODULUS")
+	if modulus == "" {
+		return "", errors.New("missing jwks modulus")
+	}
+	return modulus, nil
+}
+
+func JWKSExponent() (string, error) {
+	n := os.Getenv("JWKS_EXPONENT")
+	if n == "" {
+		return "", errors.New("missing jwks exponent")
+	}
+	return n, nil
+}
+
+func restoreNewlines(s string) string {
+	return strings.ReplaceAll(s, "\\n", "\n")
+}

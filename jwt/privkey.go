@@ -6,17 +6,15 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"os"
-	"strings"
+
+	"github.com/hrz8/simpath/config"
 )
 
 func ReadPrivateKey() (*rsa.PrivateKey, error) {
-	pkRaw := os.Getenv("JWT_PRIVATE_KEY")
-	if pkRaw == "" {
-		return nil, errors.New("missing private key")
+	pkRaw, err := config.JWTPrivateKey()
+	if err != nil {
+		return nil, err
 	}
-
-	pkRaw = restoreNewlines(pkRaw)
 	block, _ := pem.Decode([]byte(pkRaw))
 	if block == nil || block.Type != "PRIVATE KEY" {
 		return nil, errors.New("failed to decode private key")
@@ -31,8 +29,4 @@ func ReadPrivateKey() (*rsa.PrivateKey, error) {
 	}
 
 	return rsaPrivKey, nil
-}
-
-func restoreNewlines(s string) string {
-	return strings.ReplaceAll(s, "\\n", "\n")
 }

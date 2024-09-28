@@ -2,9 +2,7 @@ package jwt
 
 import (
 	"crypto/rsa"
-	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	JWT "github.com/golang-jwt/jwt/v5"
@@ -98,9 +96,9 @@ func GenerateIDToken(jwtID string, data IDTokenClaims) (string, error) {
 }
 
 func generateJWT(claims JWT.MapClaims, privateKey *rsa.PrivateKey) (string, error) {
-	kid := os.Getenv("JWKS_KID")
-	if kid == "" {
-		return "", errors.New("missing kid")
+	kid, err := config.JWKSKid()
+	if err != nil {
+		return "", err
 	}
 
 	token := JWT.NewWithClaims(JWT.SigningMethodRS256, claims)
