@@ -99,6 +99,24 @@ func templateRender(w http.ResponseWriter, _ *http.Request, baseTemplate string,
 	}
 }
 
+func TemplateRenderNoBase(w http.ResponseWriter, _ *http.Request, templateName string, data any) {
+	templatePath := filepath.Join("templates", templateName)
+	funcMap := template.FuncMap{
+		"sprintf": fmt.Sprintf,
+	}
+
+	tmpl, err := template.New("client.html").Funcs(funcMap).ParseFiles(templatePath)
+	if err != nil {
+		http.Error(w, "unable to load template", http.StatusInternalServerError)
+		return
+	}
+
+	err = tmpl.ExecuteTemplate(w, "base", data)
+	if err != nil {
+		http.Error(w, "unable to render template", http.StatusInternalServerError)
+	}
+}
+
 func getClient(ctx context.Context) (*client.OauthClient, error) {
 	cli, ok := ctx.Value(clientKey).(*client.OauthClient)
 	if !ok {

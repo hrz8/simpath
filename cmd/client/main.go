@@ -1,32 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
-	"path/filepath"
-	"text/template"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/hrz8/simpath/handler"
 )
-
-func templateRender(w http.ResponseWriter, _ *http.Request, templateName string, data any) {
-	templatePath := filepath.Join("templates", templateName)
-	funcMap := template.FuncMap{
-		"sprintf": fmt.Sprintf,
-	}
-
-	tmpl, err := template.New("client.html").Funcs(funcMap).ParseFiles(templatePath)
-	if err != nil {
-		http.Error(w, "unable to load template", http.StatusInternalServerError)
-		return
-	}
-
-	err = tmpl.ExecuteTemplate(w, "base", data)
-	if err != nil {
-		http.Error(w, "unable to render template", http.StatusInternalServerError)
-	}
-}
 
 func main() {
 	mux := chi.NewRouter()
@@ -41,7 +21,7 @@ func main() {
 				"clientSecret":   "test_secret",
 				"redirectURIRaw": "http://localhost:8088/signin",
 			}
-			templateRender(w, r, "client_login.html", data)
+			handler.TemplateRenderNoBase(w, r, "client_login.html", data)
 			return
 		}
 
@@ -57,7 +37,7 @@ func main() {
 			"state":            "somestate",
 			"btnLabel":         "Login dengan Simpath",
 		}
-		templateRender(w, r, "client_login.html", data)
+		handler.TemplateRenderNoBase(w, r, "client_login.html", data)
 	})
 	srv := &http.Server{Addr: ":8088", Handler: mux}
 	srv.ListenAndServe()

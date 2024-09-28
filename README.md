@@ -25,7 +25,7 @@ go run ./cmd/server
 ## Web
 Open your favorite browser
 ```
-http://localhost:8088/signin or http://localhost:8089/simpath_login
+http://localhost:8089 or http://localhost:8088/signin
 # this will redirect you to
 http://localhost:5001/v1/oauth2/authorize?client_id=600ef080-d02c-426d-bf79-64247ba0fc90&login_redirect_uri=%2Fv1%2Fauthorize&redirect_uri=http%3A%2F%2Flocalhost%3A8088%2Fsignin&scope=read_write&state=somestate
 ```

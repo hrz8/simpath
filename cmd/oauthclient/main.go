@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/hrz8/simpath/handler"
 	"golang.org/x/oauth2"
 )
 
@@ -63,7 +64,7 @@ func SimpathCallback(simpathOauth *oauth2.Config) http.HandlerFunc {
 
 func main() {
 	simpathOauth := &oauth2.Config{
-		RedirectURL:  "http://localhost:8089/simpath_callback",
+		RedirectURL:  "http://localhost:8089/simpath/callback",
 		ClientID:     "600ef080-d02c-426d-bf79-64247ba0fc90",
 		ClientSecret: "test_secret",
 		Scopes:       []string{"read_write", "openid"},
@@ -73,8 +74,11 @@ func main() {
 		},
 	}
 
-	http.HandleFunc("/simpath_login", SimpathLogin(simpathOauth))
-	http.HandleFunc("/simpath_callback", SimpathCallback(simpathOauth))
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		handler.TemplateRenderNoBase(w, r, "oauthclient_login.html", map[string]any{})
+	})
+	http.HandleFunc("/simpath/login", SimpathLogin(simpathOauth))
+	http.HandleFunc("/simpath/callback", SimpathCallback(simpathOauth))
 
 	log.Println("Server is running on http://localhost:8089")
 	log.Fatal(http.ListenAndServe(":8089", nil))
