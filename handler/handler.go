@@ -6,10 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"net/url"
-	"path/filepath"
 
 	"github.com/hrz8/simpath/internal/authcode"
 	"github.com/hrz8/simpath/internal/client"
@@ -20,6 +18,7 @@ import (
 	"github.com/hrz8/simpath/internal/tokengrant"
 	"github.com/hrz8/simpath/internal/user"
 	"github.com/hrz8/simpath/session"
+	"github.com/hrz8/simpath/templates"
 )
 
 type contextKey int
@@ -82,30 +81,25 @@ func getQueryString(query url.Values) string {
 }
 
 func templateRender(w http.ResponseWriter, _ *http.Request, baseTemplate string, contentTemplate string, data any) {
-	baseTemplatePath := filepath.Join("templates", baseTemplate)
-	contentTemplatePath := filepath.Join("templates", "partials", contentTemplate)
-
-	tmpl, err := template.ParseFiles(baseTemplatePath, contentTemplatePath)
+	tmpl, err := template.ParseFS(templates.TemplatesFS, baseTemplate, "partials/"+contentTemplate)
 	if err != nil {
 		http.Error(w, "unable to load template", http.StatusInternalServerError)
-		log.Println("error parsing templates:", err)
 		return
 	}
 
 	err = tmpl.ExecuteTemplate(w, "base", data)
 	if err != nil {
 		http.Error(w, "unable to render template", http.StatusInternalServerError)
-		log.Println("error executing template:", err)
+		return
 	}
 }
 
 func TemplateRenderNoBase(w http.ResponseWriter, _ *http.Request, templateName string, data any) {
-	templatePath := filepath.Join("templates", templateName)
 	funcMap := template.FuncMap{
 		"sprintf": fmt.Sprintf,
 	}
 
-	tmpl, err := template.New("client.html").Funcs(funcMap).ParseFiles(templatePath)
+	tmpl, err := template.New("client.html").Funcs(funcMap).ParseFS(templates.TemplatesFS, templateName)
 	if err != nil {
 		http.Error(w, "unable to load template", http.StatusInternalServerError)
 		return
@@ -114,6 +108,7 @@ func TemplateRenderNoBase(w http.ResponseWriter, _ *http.Request, templateName s
 	err = tmpl.ExecuteTemplate(w, "base", data)
 	if err != nil {
 		http.Error(w, "unable to render template", http.StatusInternalServerError)
+		return
 	}
 }
 
