@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"crypto/rsa"
+	"errors"
 	"fmt"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -20,4 +21,13 @@ func VerifyJWT(tokenString string, publicKey *rsa.PublicKey) (*jwt.Token, error)
 	}
 
 	return token, nil
+}
+
+func GetClaimsJWT(token *jwt.Token) (jwt.MapClaims, error) {
+	claims, claimOk := token.Claims.(jwt.MapClaims)
+	if !claimOk || !token.Valid {
+		return nil, errors.New("token invalid")
+	}
+
+	return claims, nil
 }

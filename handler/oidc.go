@@ -2,9 +2,12 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/hrz8/simpath/config"
+	"github.com/hrz8/simpath/jwt"
 )
 
 type JWK struct {
@@ -83,5 +86,50 @@ func (h *Handler) OIDCConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) UserInfoHandler(w http.ResponseWriter, r *http.Request) {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, "Missing Authorization header", http.StatusUnauthorized)
+		return
+	}
 
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		http.Error(w, "Invalid Authorization header format", http.StatusUnauthorized)
+		return
+	}
+
+	bearer := strings.TrimPrefix(authHeader, "Bearer ")
+
+	pubKey, err := jwt.ReadPublicKey()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	token, err := jwt.VerifyJWT(bearer, pubKey)
+	if err != nil {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	claims, err := jwt.GetClaimsJWT(token)
+	if err != nil {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	subRaw := claims["sub"]
+	sub, ok := subRaw.(string)
+	if !ok || sub == "" {
+		fmt.Println("ok", ok)
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+
+	usr, err := h.userSvc.FindUserByPublicID(sub)
+	if err != nil {
+		fmt.Println("err", err)
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(usr)
 }

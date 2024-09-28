@@ -101,6 +101,42 @@ func (s *Service) FindUserByEmail(email string) (*OauthUser, error) {
 	return u, nil
 }
 
+const findUserByPublicID = `
+SELECT
+	u.id AS id,
+	u.email AS email,
+	u.encrypted_password AS encrypted_password,
+	u.role_id AS role_id,
+	r.name AS role_name,
+	u.public_id AS public_id
+FROM users u
+JOIN roles r ON r.id = u.id
+WHERE u.public_id = $1
+`
+
+func (s *Service) FindUserByPublicID(publicID string) (*OauthUser, error) {
+	u := new(OauthUser)
+	err := s.db.QueryRow(
+		findUserByPublicID,
+		publicID,
+	).Scan(
+		&u.ID,
+		&u.Email,
+		&u.EncryptedPassword,
+		&u.RoleID,
+		&u.RoleName,
+		&u.PublicID,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrUserNotFound
+		}
+		return nil, err
+	}
+
+	return u, nil
+}
+
 func (s *Service) IsUserExists(email string) bool {
 	_, err := s.FindUserByEmail(email)
 	return err == nil

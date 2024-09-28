@@ -107,3 +107,11 @@ curl -X POST "localhost:5001/v1/oauth2/introspect" \
            "token_type_hint": "refresh_token"
          }'
 ```
+
+## OIDC
+
+### Fetch User Info
+```sh
+curl http://localhost:5001/v1/oauth2/userinfo \
+     -H "Authorization: Bearer <access_token>"
+```
