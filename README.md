@@ -1,8 +1,6 @@
 # simpath
 
-It's a simple auth identity provider.
-
-Right now it only support random uuid for tokens. Next, will implement JWT.
+It's a simple OAuth2 server and OIDC server implementation using Golang.
 
 Inspired by [go-oauth2-server](https://github.com/RichardKnop/go-oauth2-server)
 
@@ -24,7 +22,7 @@ go run ./cmd/server
 
 ## Web
 Open your favorite browser
-```
+```md
 http://localhost:8089 or http://localhost:8088/signin
 # this will redirect you to
 http://localhost:5001/v1/oauth2/authorize?client_id=600ef080-d02c-426d-bf79-64247ba0fc90&login_redirect_uri=%2Fv1%2Fauthorize&redirect_uri=http%3A%2F%2Flocalhost%3A8088%2Fsignin&scope=read_write&state=somestate
